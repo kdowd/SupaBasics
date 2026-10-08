@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page 5 — The library and createClient() · Supabase Workshop</title>
+
+<style>
+  /* ======================================================================
+     DESIGN TOKENS — identical to pages 1-4
+     ====================================================================== */
+  :root {
+    --bg:      #0e1016;
+    --panel:   #161922;
+    --panel-2: #1d212c;
+    --border:  #272c38;
+
+    --text:  #e7e9ef;
+    --muted: #969db0;
+
+    --accent: #3ecf8e;
+    --blue:   #7cc4ff;
+
+    --warn:   #ffc457;
+    --danger: #ff7b7b;
+
+    --radius: 12px;
+    --measure: 780px;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 420px;
+    background: radial-gradient(60% 100% at 50% 0%, rgba(62, 207, 142, .10), transparent 70%);
+    pointer-events: none;
+  }
+
+  .wrap {
+    position: relative;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 56px 24px 96px;
+  }
+
+  .prose { max-width: var(--measure); }
+
+  /* ---------------------------------------------------------------- type */
+  h1, h2, h3 { letter-spacing: -0.5px; line-height: 1.2; margin: 0; }
+  h1 { font-size: clamp(30px, 5vw, 44px); letter-spacing: -1.2px; font-weight: 800; }
+  h2 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+  h3 { font-size: 17px; font-weight: 650; letter-spacing: -0.2px; }
+
+  p { margin: 0 0 14px; color: var(--text); }
+  .lede { font-size: 18px; color: var(--muted); margin-top: 14px; }
+
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .accent { color: var(--accent); }
+
+  code, .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13.5px;
+  }
+  p code, li code, td code, .prose code {
+    color: var(--accent);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1px 6px;
+    white-space: nowrap;
+  }
+
+  /* ------------------------------------------------------------ structure */
+  section { margin-top: 56px; }
+  .sec-label {
+    font-size: 12px; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
+  }
+  .rule { height: 1px; background: var(--border); border: 0; margin: 56px 0; }
+
+  .kicker {
+    display: inline-block;
+    font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--accent);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 14px;
+    margin-bottom: 22px;
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px 24px;
+  }
+
+  /* ------------------------------------------------------------ callouts */
+  .note, .warn, .danger, .okbox {
+    border-radius: 12px; padding: 16px 18px; margin: 20px 0;
+    max-width: var(--measure);
+  }
+  .note   { background: #131c26; border: 1px solid #24405a; }
+  .warn   { background: #241d0f; border: 1px solid #4a3a1a; }
+  .danger { background: #241416; border: 1px solid #5a262a; }
+  .okbox  { background: #10231a; border: 1px solid #245039; }
+  .note   strong { color: var(--blue); }
+  .warn   strong { color: var(--warn); }
+  .danger strong { color: var(--danger); }
+  .okbox  strong { color: var(--accent); }
+  .note p:last-child, .warn p:last-child, .danger p:last-child, .okbox p:last-child { margin-bottom: 0; }
+
+  /* --------------------------------------------------------------- pills */
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 11.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    border-radius: 999px; padding: 5px 12px;
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--muted);
+  }
+  .pill.ok   { color: var(--accent); border-color: #245039; background: #10231a; }
+  .pill.bad  { color: var(--danger); border-color: #5a262a; background: #241416; }
+  .pill.load { color: var(--warn);   border-color: #4a3a1a; background: #241d0f; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+
+  /* -------------------------------------------------------------- buttons */
+  .btn {
+    font: 600 14px/1 ui-sans-serif, system-ui, -apple-system, sans-serif;
+    border-radius: 9px; padding: 11px 15px;
+    border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--text);
+    cursor: pointer;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  .btn:hover:not(:disabled) { border-color: #3a4152; }
+  .btn.primary { background: var(--accent); color: #06231a; border-color: var(--accent); font-weight: 700; }
+  .btn.primary:hover:not(:disabled) { background: #4bd99a; }
+  .btn.ghost { background: transparent; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btnrow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 16px 0 4px; }
+
+  /* --------------------------------------------------------- report list */
+  .kv { margin-top: 16px; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .kvrow {
+    display: flex; flex-wrap: wrap; gap: 6px 14px;
+    align-items: baseline; justify-content: space-between;
+    padding: 11px 15px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel-2);
+  }
+  .kvrow:last-child { border-bottom: 0; }
+  .kvrow .k { font-size: 13.5px; color: var(--muted); }
+  .kvrow .v {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px; color: var(--text);
+    word-break: break-all; text-align: right; flex: 1 1 auto;
+  }
+  .kvrow .v.ok { color: var(--accent); }
+  .kvrow .v.bad { color: var(--danger); }
+  .kvrow .v.dim { color: var(--muted); }
+
+  .placeholder { padding: 16px; color: var(--muted); font-size: 14px; background: var(--panel-2); }
+
+  /* ------------------------------------------------------------ sumtable */
+  .sumwrap {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden; margin-top: 18px;
+  }
+  .sumtable { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .sumtable th {
+    background: var(--panel-2); color: var(--muted);
+    font-size: 11.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border);
+  }
+  .sumtable td {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    vertical-align: top; font-size: 14px; color: var(--muted);
+  }
+  .sumtable tbody tr:nth-child(even) { background: var(--panel-2); }
+  .sumtable tbody tr:last-child td { border-bottom: 0; }
+  .sumtable td:first-child {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px; color: var(--accent); white-space: nowrap;
+  }
+  .sumtable td strong { color: var(--text); }
+
+  /* ---------------------------------------------------------- code blocks */
+  pre {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    margin: 14px 0;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  pre code { color: var(--text); white-space: pre; }
+
+  .tok-key { color: var(--blue); }
+  .tok-str { color: var(--accent); }
+  .tok-com { color: var(--muted); }
+  .tok-hi  { background: rgba(62,207,142,.13); border-radius: 4px; }
+
+  .copy-btn {
+    position: absolute; top: 10px; right: 10px;
+    font: 600 11.5px/1 ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: .06em; text-transform: uppercase;
+    color: var(--muted); background: var(--panel-2);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 7px 10px; cursor: pointer;
+    transition: color .15s, border-color .15s;
+  }
+  .copy-btn:hover { color: var(--text); border-color: #3a4152; }
+  .copy-btn.done { color: var(--accent); border-color: #245039; }
+
+  .step { display: flex; gap: 16px; margin: 30px 0; }
+  .step .num {
+    flex: 0 0 34px; height: 34px; border-radius: 50%;
+    background: var(--accent); color: #06231a;
+    display: flex; align-items: center; justify-content: center; font-weight: 800;
+  }
+  .step .body { min-width: 0; flex: 1; }
+  .step .body p:last-child { margin-bottom: 0; }
+
+  .nextnav {
+    display: flex; flex-wrap: wrap; gap: 14px;
+    align-items: center; justify-content: space-between;
+    margin-top: 20px;
+  }
+  footer {
+    margin-top: 64px; padding-top: 22px;
+    border-top: 1px solid var(--border);
+    color: var(--muted); font-size: 13.5px;
+  }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 36px 16px 72px; }
+    .card { padding: 18px; }
+    .kvrow .v { text-align: left; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ==================================================== HERO -->
+  <header class="prose">
+    <div class="kicker">Supabase Workshop · Page 5 of 5</div>
+    <h1>The two lines underneath <span class="accent">everything</span></h1>
+    <p class="lede">
+      You have used these two lines on every page without stopping to look at them. Now
+      let's take them apart: why we have to fetch a library at all, and what
+      <code>createClient()</code> is actually doing when we hand it a URL and a key.
+    </p>
+  </header>
+
+  <div class="prose">
+    <div class="note">
+      <p>
+        <strong>The two lines:</strong>
+      </p>
+    </div>
+  </div>
+
+  <pre><code><span class="tok-com">&lt;!-- 1. Fetch the library from a CDN --&gt;</span>
+&lt;<span class="tok-key">script</span> src=<span class="tok-str">"https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"</span>&gt;&lt;/<span class="tok-key">script</span>&gt;
+
+<span class="tok-com">// 2. Turn your settings into a working client</span>
+<span class="tok-key">const</span> db = supabase.<span class="tok-key">createClient</span>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);</code></pre>
+
+  <!-- ============================================ WHY ============================================ -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">Question one</div>
+      <h2>Why do we need a library at all?</h2>
+      <p>
+        Because the browser has never heard of Supabase. There is no built-in
+        <code>supabase</code> command in JavaScript — if you typed
+        <code>supabase.createClient()</code> in a blank page, you would get
+        <code>ReferenceError: supabase is not defined</code>. A browser only ships with
+        general-purpose tools: <code>fetch</code>, JSON, the DOM. Everything else is
+        something you add.
+      </p>
+      <p>You <em>could</em> talk to Supabase by hand. It is only HTTP:</p>
+    </div>
+
+    <pre><code><span class="tok-com">// Doing it manually, with no library. This really works.</span>
+<span class="tok-key">const</span> response = <span class="tok-key">await</span> fetch(
+  <span class="tok-str">'https://decwucuwqnzrxzbxxifu.supabase.co/rest/v1/penguins?select=*&amp;limit=10'</span>,
+  { headers: {
+      apikey:        <span class="tok-str">'sb_publishable_...'</span>,
+      Authorization: <span class="tok-str">'Bearer sb_publishable_...'</span>
+  }}
+);
+<span class="tok-key">const</span> rows = <span class="tok-key">await</span> response.json();</code></pre>
+
+    <div class="prose">
+      <p>
+        That is genuinely all page 1 did under the bonnet. But look at what you now own:
+        building every URL by hand, encoding every filter into a query string, setting two
+        headers correctly on every single request, remembering to swap the
+        <code>Authorization</code> header for a JWT after login, catching expired tokens and
+        refreshing them, storing the session, and parsing error bodies yourself.
+      </p>
+      <p><strong>The library is a wrapper around exactly that.</strong> It is not magic and it is not a server — it is a few hundred kilobytes of JavaScript that writes the boring HTTP for you, and gives you one object to hold.</p>
+    </div>
+
+    <div class="prose">
+      <div class="okbox">
+        <p>
+          <strong>What you get back is one object with everything on it.</strong>
+          That is why the same <code>db</code> could do <code>db.from(...)</code> on page 1,
+          <code>db.auth.signInWithPassword(...)</code> on page 3 and
+          <code>db.rpc(...)</code> on page 4 — database, authentication and functions are all
+          methods hanging off the client you built once.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================ THE CDN ============================================ -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">Question two</div>
+      <h2>Where the library comes from</h2>
+    </div>
+
+    <pre><code>https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js
+ <span class="tok-com">└─┬─┘</span>   <span class="tok-com">└─┬┘</span> <span class="tok-com">└──────────┬──────────┘</span> <span class="tok-com">└─┬─┘</span>  <span class="tok-com">└────────┬────────┘</span>
+   CDN   npm   the package name      version    which build</code></pre>
+
+    <div class="prose">
+      <div class="step">
+        <div class="num">1</div>
+        <div class="body">
+          <h3>Why a CDN instead of downloading it?</h3>
+          <p>
+            <strong>jsdelivr</strong> is a mirror of <em>npm</em>, the public package
+            registry. That single <code>&lt;script&gt;</code> tag fetches the exact file the
+            Supabase team published, from a server near the student. No
+            <code>npm install</code>, no <code>node_modules</code>, no build step, no
+            terminal. Double-click an HTML file and it works — which is the whole reason
+            this workshop can exist without teaching a toolchain first.
+          </p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="num">2</div>
+        <div class="body">
+          <h3>Why <code>@2.117.3</code> and not just <code>@2</code>?</h3>
+          <p>
+            <code>@2</code> means “whatever the newest version 2 happens to be today”.
+            That is convenient, and slightly dangerous in a classroom: the page that worked
+            in your lesson plan can behave differently next month through no change of
+            yours. Pinning the exact version makes the class <strong>repeatable</strong>.
+            Update it deliberately, not accidentally.
+          </p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="num">3</div>
+        <div class="body">
+          <h3>Why the <code>/dist/umd/</code> build?</h3>
+          <p>
+            Packages ship several builds for different situations. The <strong>UMD</strong>
+            build is the friendly one: it defines a single global variable called
+            <code>supabase</code>, so a plain <code>&lt;script&gt;</code> tag is enough and
+            you can use it from any other script on the page.
+          </p>
+          <p style="margin-top:10px;">
+            The <strong>ESM</strong> build (<code>dist/index.mjs</code>) is what modern
+            bundlers prefer, but it needs <code>import</code> statements and either a build
+            tool or an import map — an extra concept before the first query. We will take
+            the global.
+          </p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="num">4</div>
+        <div class="body">
+          <h3>Order matters</h3>
+          <p>
+            The library must load <em>before</em> any script that uses it. That is why every
+            page in this project has the same three lines at the bottom, in the same order:
+            the SDK, then <code>supabase-config.js</code>, then the page's own code. Put them
+            the other way round and you get
+            <code>supabase is not defined</code> — the single most common error in this
+            workshop.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <!-- ============================================ LIVE INSPECTION ============================================ -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">Question three</div>
+      <h2>What did that script tag actually give us?</h2>
+      <p>
+        Let's look at the real thing rather than describe it. This inspects the
+        <code>supabase</code> global, then builds a client and reads back what it contains.
+      </p>
+    </div>
+
+    <div class="card" style="margin-top:18px;">
+      <div class="btnrow" style="margin-top:0;">
+        <button class="btn primary" id="inspectBtn" type="button">Inspect the library</button>
+        <button class="btn" id="mistakeBtn" type="button">Try the two mistakes</button>
+      </div>
+      <div class="kv" id="report">
+        <div class="placeholder">Press “Inspect the library” to see the real values.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================ createClient ============================================ -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">Question four</div>
+      <h2>What <code>createClient()</code> does</h2>
+      <p>
+        Two arguments in, one object out. That is the whole function.
+      </p>
+    </div>
+
+    <pre><code><span class="tok-key">const</span> db = supabase.createClient(
+  <span class="tok-hi"><span class="tok-str">'https://decwucuwqnzrxzbxxifu.supabase.co'</span></span>,    <span class="tok-com">// 1. WHICH project</span>
+  <span class="tok-hi"><span class="tok-str">'sb_publishable_ONnalS_8pdIUH2Qrsz67CA_...'</span></span>     <span class="tok-com">// 2. WHICH key</span>
+);</code></pre>
+
+    <div class="prose">
+      <div class="step">
+        <div class="num">1</div>
+        <div class="body">
+          <h3>The URL — <em>which project am I talking to?</em></h3>
+          <p>
+            This is your project's address, found in the dashboard under
+            <em>Project Settings → Data API</em>. It is public information. Knowing the
+            address of a building is not the same as being allowed through the door.
+          </p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="num">2</div>
+        <div class="body">
+          <h3>The key — <em>on whose behalf?</em></h3>
+          <p>
+            The <strong>publishable key</strong> is designed to be shipped inside browser
+            code. It is not a password. It tells Supabase which project is asking on behalf
+            of a visitor who has not logged in yet, and it resolves to the
+            <code>anon</code> role — the one your insert policy on page 2 refused.
+          </p>
+          <p style="margin-top:10px;">
+            <strong>Never put a secret or <code>service_role</code> key here.</strong> Those
+            ignore RLS completely and would hand every visitor the keys to the database.
+          </p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="num">3</div>
+        <div class="body">
+          <h3>The result — a <code>SupabaseClient</code></h3>
+          <p>
+            <code>createClient()</code> is a constructor, not a connection. It hands back an
+            object — we verified it is a real <code>SupabaseClient</code> instance — carrying
+            your URL and key plus a set of ready-made method groups. It takes
+            <strong>three</strong> parameters; the third is an options object you will
+            probably never need at this level.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="prose">
+      <div class="note">
+        <p>
+          <strong>The clever part: one URL becomes five.</strong> You supply the address
+          once, and the client works out every service endpoint from it — the database, the
+          login service, realtime websockets, file storage and edge functions. Look at the
+          <code>https://</code> versus <code>wss://</code> and the <code>/rest/v1</code>,
+          <code>/auth/v1</code> paths in the inspection above. Those are not things you ever
+          type; the library derives them.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================ THE BIG SURPRISE ============================================ -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">The bit that surprises everyone</div>
+      <h2><code>createClient()</code> does not connect to anything</h2>
+      <p>
+        It makes <strong>no network request at all</strong>. It is pure configuration — it
+        stores your URL and key in an object and returns it. We proved this by handing it a
+        domain that does not exist:
+      </p>
+    </div>
+
+    <pre><code>supabase.createClient(<span class="tok-str">'https://nonsense.invalid'</span>, <span class="tok-str">'fake-key'</span>)
+<span class="tok-com">// -> no error. It happily builds a client for a domain that has never existed.</span></code></pre>
+
+    <div class="prose">
+      <p>
+        The connection happens later, when you first <em>use</em> the client — the moment
+        you call <code>.from('penguins').select()</code> and <code>await</code> it.
+      </p>
+
+      <div class="warn">
+        <p>
+          <strong>Why this matters when something breaks.</strong> If a page does nothing,
+          students instinctively go and check the <code>createClient</code> line. That line
+          is almost never the problem — it cannot fail on a typo in the URL, because it never
+          contacts the server. <strong>Debug the first query, not the client.</strong> The
+          error you want is on the query.
+        </p>
+      </div>
+
+      <h3 style="margin-top:30px;">The only two things it checks</h3>
+      <p>
+        Give it an empty string and it does finally complain. These are the real messages,
+        and both are worth recognising instantly:
+      </p>
+    </div>
+
+    <pre><code>supabase.createClient(<span class="tok-str">''</span>, <span class="tok-str">''</span>)
+<span class="tok-com">// throws:  supabaseUrl is required.</span>
+
+supabase.createClient(<span class="tok-str">'https://your-project.supabase.co'</span>, <span class="tok-str">''</span>)
+<span class="tok-com">// throws:  supabaseKey is required.</span></code></pre>
+
+    <div class="prose">
+      <p>
+        Those are thrown, not returned — the only two exceptions in the whole story, because
+        the client cannot be built at all. Press <em>Try the two mistakes</em> above to see
+        them caught and printed live.
+      </p>
+
+      <div class="danger">
+        <p>
+          <strong>And everything after that returns errors instead of throwing.</strong>
+          This is the habit from page 1, and it never stops being true. A query to a domain
+          that does not exist does not raise an exception — it hands you an error object:
+        </p>
+      </div>
+    </div>
+
+    <pre><code><span class="tok-key">const</span> { <span class="tok-key">data</span>, <span class="tok-key">error</span> } = <span class="tok-key">await</span> db.from(<span class="tok-str">'penguins_rls_on'</span>).select();
+
+<span class="tok-com">// Nothing there?        data: null, error: { message: 'TypeError: Failed to fetch' }</span>
+<span class="tok-com">// Table missing?        data: null, error: { code: 'PGRST205', message: "Could not find</span>
+<span class="tok-com">//                                          the table 'public.x' in the schema cache" }</span>
+<span class="tok-com">// Policy refused you?   data: null, error: { code: '42501', message: 'new row violates</span>
+<span class="tok-com">//                                          row-level security policy' }</span>
+<span class="tok-com">// All good?             data: [ ...rows ], error: null</span>
+
+<span class="tok-key">if</span> (error) {
+  console.error(error.message);   <span class="tok-com">// <- the line that saves you</span>
+} <span class="tok-key">else</span> {
+  console.log(data);
+}</code></pre>
+  </section>
+
+  <!-- ============================================ SHARED CONFIG ============================================ -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">How we did it here</div>
+      <h2>Why we wrote it once, in one file</h2>
+      <p>
+        Every page in this workshop loads the same third line, and it does the
+        <code>createClient</code> call exactly once:
+      </p>
+    </div>
+
+    <pre><code><span class="tok-com">// supabase-config.js — loaded by all five pages</span>
+<span class="tok-key">const</span> SUPABASE_URL = <span class="tok-str">'https://decwucuwqnzrxzbxxifu.supabase.co'</span>;
+<span class="tok-key">const</span> SUPABASE_PUBLISHABLE_KEY = <span class="tok-str">'sb_publishable_...'</span>;
+
+window.db = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);</code></pre>
+
+    <div class="prose">
+      <p>
+        Duplicating those two values across five pages would mean five places to change when
+        the project moves, and five chances to leave one behind. Storing the client on
+        <code>window.db</code> also means you can open the console on any page, type
+        <code>db</code>, and see it.
+      </p>
+
+      <div class="note">
+        <p>
+          <strong>Worth knowing:</strong> creating a client twice is harmless — page 5 does
+          it again deliberately, to show you the call. Each client is just an independent
+          object with the same settings. It is not a connection, so there is nothing to
+          exhaust or close.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================ CONSOLE ============================================ -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">Try it yourself</div>
+      <h2>Console exercises</h2>
+    </div>
+
+    <pre><code><span class="tok-com">// What did the script tag give us?</span>
+<span class="tok-key">typeof</span> supabase                    <span class="tok-com">// 'object'</span>
+Object.keys(supabase).length       <span class="tok-com">// how many things it exports</span>
+<span class="tok-key">typeof</span> supabase.createClient       <span class="tok-com">// 'function'</span>
+Object.keys(supabase).filter(n => n.includes(<span class="tok-str">'Error'</span>))   <span class="tok-com">// its error classes</span>
+
+<span class="tok-com">// Build your own client and poke at it</span>
+<span class="tok-key">const</span> myClient = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+myClient <span class="tok-key">instanceof</span> supabase.SupabaseClient     <span class="tok-com">// true</span>
+myClient.authUrl                                 <span class="tok-com">// the login endpoint it worked out</span>
+myClient.rest.url                                <span class="tok-com">// the database endpoint</span>
+myClient.storageKey                              <span class="tok-com">// where it will store a session</span>
+
+<span class="tok-com">// Prove it never connected: this throws NOTHING</span>
+supabase.createClient(<span class="tok-str">'https://nonsense.invalid'</span>, <span class="tok-str">'x'</span>)
+
+<span class="tok-com">// ...but using it does come back with an error object</span>
+<span class="tok-key">const</span> bad = supabase.createClient(<span class="tok-str">'https://nonsense.invalid'</span>, <span class="tok-str">'x'</span>);
+(<span class="tok-key">await</span> bad.from(<span class="tok-str">'t'</span>).select()).error.message       <span class="tok-com">// 'TypeError: Failed to fetch'</span></code></pre>
+  </section>
+
+  <!-- ============================================ WRAP UP ============================================ -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">That's the workshop</div>
+      <h2>What the five pages built up to</h2>
+      <p>
+        Every page used the same two lines you have just taken apart. Together they tell one
+        story: data that anyone could read and write, and the layers that close it down.
+      </p>
+    </div>
+
+    <div class="sumwrap">
+      <table class="sumtable">
+        <thead>
+          <tr><th>Page</th><th>What it showed</th><th>The lesson</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1 · index.html</td>
+            <td>Read all 344 penguins with no login</td>
+            <td><strong>A public key is not a secret.</strong> RLS is what protects data — and a table without it is world-writable to anyone holding that key.</td>
+          </tr>
+          <tr>
+            <td>2 · page-2-rls.html</td>
+            <td>The same operations on an RLS-off and an RLS-on table</td>
+            <td><strong>Policies decide who may do what.</strong> INSERT fails loudly; UPDATE and DELETE fail silently, changing nothing.</td>
+          </tr>
+          <tr>
+            <td>3 · page-3-login.html</td>
+            <td>Email login, and a live JWT decode</td>
+            <td><strong>Logging in only swaps the Authorization header.</strong> The token's <code>role</code> claim is what makes <code>to authenticated</code> match.</td>
+          </tr>
+          <tr>
+            <td>4 · page-4-function.html</td>
+            <td>A database function called with <code>db.rpc()</code></td>
+            <td><strong>You can move logic server-side.</strong> <code>security invoker</code> means RLS still applies — a function organises, it does not protect.</td>
+          </tr>
+          <tr>
+            <td>5 · this page</td>
+            <td>The library and <code>createClient()</code></td>
+            <td><strong>One URL and one key build the client everything else hangs off.</strong> No network happens until the first query.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="prose">
+      <div class="okbox">
+        <p>
+          <strong>If you remember one habit:</strong> destructure <code>{ data, error }</code>
+          and check <code>error</code> first. Supabase almost never throws — it reports. The
+          silent failures you met on pages 2 and 3 are exactly what that habit catches.
+        </p>
+      </div>
+
+      <div class="nextnav">
+        <a class="pill" href="page-4-function.html">← Page 4 · Calling a function (RPC)</a>
+        <a class="pill" href="index.html">Back to page 1 ↺</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p style="margin:0;">
+      Supabase workshop · page 5 of 5 · project
+      <span class="mono" style="color:var(--muted)">decwucuwqnzrxzbxxifu</span>
+    </p>
+  </footer>
+
+</div>
+
+<!-- ==========================================================================
+     The two lines this whole page is about. Note the order.
+     ========================================================================== -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
+<script src="supabase-config.js"></script>
+
+<script>
+(function () {
+  'use strict';
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------------------------------------------------------- report rows */
+  function kv(label, value, kind) {
+    var row = document.createElement('div');
+    row.className = 'kvrow';
+
+    var k = document.createElement('div');
+    k.className = 'k';
+    k.textContent = label;
+
+    var v = document.createElement('div');
+    v.className = 'v' + (kind ? ' ' + kind : '');
+    v.textContent = value;          /* textContent again — never innerHTML */
+
+    row.appendChild(k);
+    row.appendChild(v);
+    return row;
+  }
+
+  function reset() {
+    var r = $('report');
+    r.textContent = '';
+    return r;
+  }
+
+  function heading(text) {
+    var row = document.createElement('div');
+    row.className = 'kvrow';
+    var k = document.createElement('div');
+    k.className = 'k';
+    k.style.color = 'var(--accent)';
+    k.style.fontWeight = '700';
+    k.style.letterSpacing = '.1em';
+    k.style.textTransform = 'uppercase';
+    k.style.fontSize = '11.5px';
+    k.textContent = text;
+    row.appendChild(k);
+    return row;
+  }
+
+  /* ======================================================================
+     1. Inspect the library, then build a client and look inside it.
+     ====================================================================== */
+  $('inspectBtn').addEventListener('click', async function () {
+    var btn = this;
+    btn.disabled = true;
+
+    try {
+      var r = reset();
+
+      /* ---------------------------------------- the global from the CDN */
+      r.appendChild(heading('The supabase global'));
+
+      r.appendChild(kv('typeof supabase', typeof supabase,
+        typeof supabase === 'object' ? 'ok' : 'bad'));
+      r.appendChild(kv('typeof supabase.createClient', typeof supabase.createClient,
+        typeof supabase.createClient === 'function' ? 'ok' : 'bad'));
+      r.appendChild(kv('things it exports',
+        Object.keys(supabase).length + ' names'));
+      r.appendChild(kv('supabase.version', supabase.version || 'not exposed by the UMD build', 'dim'));
+
+      /* ---------------------------------------- build a client ourselves */
+      r.appendChild(heading('createClient(url, key)'));
+
+      var started = performance.now();
+      var client = supabase.createClient(
+        window.SUPABASE_URL,
+        window.SUPABASE_PUBLISHABLE_KEY
+      );
+      var elapsed = Math.round(performance.now() - started);
+
+      r.appendChild(kv('built in', elapsed + ' ms — no network request was made', 'ok'));
+      r.appendChild(kv('is a SupabaseClient',
+        String(client instanceof supabase.SupabaseClient),
+        client instanceof supabase.SupabaseClient ? 'ok' : 'bad'));
+      r.appendChild(kv('createClient takes', supabase.createClient.length + ' parameters (url, key, options)'));
+      r.appendChild(kv('URL we passed', client.supabaseUrl, 'dim'));
+
+      /* ---------------------------------------- endpoints it derived */
+      r.appendChild(heading('Endpoints it worked out from that one URL'));
+
+      r.appendChild(kv('database (rest)', client.rest && client.rest.url ? client.rest.url : '(n/a)'));
+      r.appendChild(kv('login (auth)', client.authUrl || '(n/a)'));
+      r.appendChild(kv('realtime', client.realtimeUrl || '(n/a)'));
+      r.appendChild(kv('storage', client.storageUrl || '(n/a)'));
+      r.appendChild(kv('functions', client.functionsUrl || '(n/a)'));
+
+      r.appendChild(heading('Settings it stored'));
+
+      r.appendChild(kv('session storage key', client.storageKey || '(n/a)'));
+
+      var clientInfo = 'n/a';
+      try {
+        var headers = client.headers;
+        if (headers && typeof headers.get === 'function') {
+          clientInfo = headers.get('X-Client-Info') || JSON.stringify(headers);
+        } else if (headers && typeof headers === 'object') {
+          clientInfo = headers['X-Client-Info'] || JSON.stringify(headers);
+        }
+      } catch (e) { /* leave as n/a */ }
+      r.appendChild(kv('identifies itself as', clientInfo, 'dim'));
+
+      /* ---------------------------------------- now actually use it */
+      r.appendChild(heading('Now use it — this is where a connection happens'));
+
+      var q0 = performance.now();
+      var res = await client.from('penguins_rls_on').select('id', { count: 'exact', head: true });
+      var qms = Math.round(performance.now() - q0);
+
+      if (res.error) {
+        r.appendChild(kv('query on penguins_rls_on', res.error.message, 'bad'));
+      } else {
+        r.appendChild(kv('rows in penguins_rls_on', res.count + ' rows in ' + qms + ' ms',
+          'ok'));
+      }
+
+      r.appendChild(kv('data / error', res.error ? 'error set' : 'error is null',
+        res.error ? 'bad' : 'ok'));
+
+    } catch (e) {
+      $('report').appendChild(kv('unexpected exception', e.message || String(e), 'bad'));
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  /* ======================================================================
+     2. The only two things createClient actually validates.
+     ====================================================================== */
+  $('mistakeBtn').addEventListener('click', function () {
+    var r = reset();
+
+    r.appendChild(heading('The only two errors it throws'));
+
+    try {
+      supabase.createClient('', '');
+      r.appendChild(kv('createClient("", "")', 'no error?!', 'bad'));
+    } catch (e) {
+      r.appendChild(kv('createClient("", "")', 'threw: ' + e.message, 'ok'));
+    }
+
+    try {
+      supabase.createClient(window.SUPABASE_URL, '');
+      r.appendChild(kv('createClient(url, "")', 'no error?!', 'bad'));
+    } catch (e) {
+      r.appendChild(kv('createClient(url, "")', 'threw: ' + e.message, 'ok'));
+    }
+
+    r.appendChild(heading('Everything else returns an error instead of throwing'));
+
+    try {
+      var bad = supabase.createClient('https://nonsense.invalid', 'fake-key');
+      r.appendChild(kv('createClient(nonsense domain)', 'built fine — no throw, no connection', 'ok'));
+
+      var pending = bad.from('anything').select();
+
+      Promise.resolve(pending).then(function (out) {
+        r.appendChild(kv('then USING that client',
+          'did not throw either. error.message = "' + (out.error && out.error.message) + '"',
+          'dim'));
+      });
+
+    } catch (e) {
+      r.appendChild(kv('createClient(nonsense domain)', 'threw: ' + e.message, 'bad'));
+    }
+  });
+
+  /* ------------------------------------------------- copy code buttons */
+  document.querySelectorAll('pre').forEach(function (pre) {
+    var btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.type = 'button';
+    btn.textContent = 'Copy';
+
+    btn.addEventListener('click', function () {
+      var code = pre.querySelector('code');
+      var text = code ? code.innerText : pre.innerText;
+      var done = function () {
+        btn.textContent = 'Copied';
+        btn.classList.add('done');
+        setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1500);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () { fallback(text, done); });
+      } else {
+        fallback(text, done);
+      }
+    });
+
+    pre.appendChild(btn);
+  });
+
+  function fallback(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
+  console.log('[page 5] library page ready');
+})();
+</script>
+</body>
+</html>

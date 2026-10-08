@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page 1 — Reading the penguins table · Supabase Auth Workshop</title>
+
+<style>
+  /* ======================================================================
+     DESIGN TOKENS
+     ====================================================================== */
+  :root {
+    --bg:      #0e1016;
+    --panel:   #161922;
+    --panel-2: #1d212c;
+    --border:  #272c38;
+
+    --text:  #e7e9ef;
+    --muted: #969db0;
+
+    --accent: #3ecf8e;
+    --blue:   #7cc4ff;
+
+    --warn:   #ffc457;
+    --danger: #ff7b7b;
+
+    --radius: 12px;
+    --measure: 780px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Faint hero glow — the only gradient on the page. */
+  body::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 420px;
+    background: radial-gradient(60% 100% at 50% 0%, rgba(62, 207, 142, .10), transparent 70%);
+    pointer-events: none;
+  }
+
+  /* Widest shell: the data table needs room. Prose stays at 780px. */
+  .wrap {
+    position: relative;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 56px 24px 96px;
+  }
+
+  /* Everything that is prose is capped at a readable measure. */
+  .prose { max-width: var(--measure); }
+
+  /* ---------------------------------------------------------------- type */
+  h1, h2, h3 { letter-spacing: -0.5px; line-height: 1.2; margin: 0; }
+
+  h1 { font-size: clamp(30px, 5vw, 44px); letter-spacing: -1.2px; font-weight: 800; }
+  h2 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+  h3 { font-size: 17px; font-weight: 650; letter-spacing: -0.2px; }
+
+  p { margin: 0 0 14px; color: var(--text); }
+  .lede { font-size: 18px; color: var(--muted); margin-top: 14px; }
+
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .accent { color: var(--accent); }
+
+  code, kbd, .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13.5px;
+  }
+  p code, li code, td code {
+    color: var(--accent);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1px 6px;
+    white-space: nowrap;
+  }
+
+  /* ------------------------------------------------------------ structure */
+  section { margin-top: 56px; }
+
+  .sec-label {
+    font-size: 12px; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
+  }
+
+  .rule { height: 1px; background: var(--border); border: 0; margin: 56px 0; }
+
+  /* ---------------------------------------------------------------- hero */
+  .kicker {
+    display: inline-block;
+    font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--accent);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 14px;
+    margin-bottom: 22px;
+  }
+
+  /* --------------------------------------------------------------- cards */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px 24px;
+  }
+
+  /* ------------------------------------------------------------ callouts */
+  .note, .warn, .danger {
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin: 20px 0;
+    max-width: var(--measure);
+  }
+  .note   { background: #131c26; border: 1px solid #24405a; }
+  .warn   { background: #241d0f; border: 1px solid #4a3a1a; }
+  .danger { background: #241416; border: 1px solid #5a262a; }
+
+  .note   strong { color: var(--blue); }
+  .warn   strong { color: var(--warn); }
+  .danger strong { color: var(--danger); }
+  .note p:last-child, .warn p:last-child, .danger p:last-child { margin-bottom: 0; }
+
+  /* --------------------------------------------------------------- pills */
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 11.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    border-radius: 999px; padding: 5px 12px;
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--muted);
+  }
+  .pill.ok  { color: var(--accent); border-color: #245039; background: #10231a; }
+  .pill.bad { color: var(--danger); border-color: #5a262a; background: #241416; }
+  .pill.load{ color: var(--warn);   border-color: #4a3a1a; background: #241d0f; }
+
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+
+  /* --------------------------------------------------------------- steps */
+  .step { display: flex; gap: 16px; margin: 30px 0; }
+  .step .num {
+    flex: 0 0 34px; height: 34px; border-radius: 50%;
+    background: var(--accent); color: #06231a;
+    display: flex; align-items: center; justify-content: center; font-weight: 800;
+  }
+  .step .body { min-width: 0; flex: 1; }
+  .step .body p:last-child { margin-bottom: 0; }
+
+  /* ---------------------------------------------------------- code blocks */
+  pre {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 18px;
+    margin: 14px 0;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  pre code { color: var(--text); white-space: pre; }
+
+  .tok-key { color: var(--blue); }
+  .tok-str { color: var(--accent); }
+  .tok-com { color: var(--muted); }
+
+  .copy-btn {
+    position: absolute; top: 10px; right: 10px;
+    font: 600 11.5px/1 ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: .06em; text-transform: uppercase;
+    color: var(--muted);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 10px;
+    cursor: pointer;
+    transition: color .15s, border-color .15s;
+  }
+  .copy-btn:hover { color: var(--text); border-color: #3a4152; }
+  .copy-btn.done { color: var(--accent); border-color: #245039; }
+
+  /* ----------------------------------------------------------- stat strip */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-top: 20px;
+  }
+  .stat { background: var(--panel); padding: 16px 18px; }
+  .stat .k {
+    font-size: 11.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 6px;
+  }
+  .stat .v { font-size: 21px; font-weight: 700; letter-spacing: -0.5px; }
+  .stat .v.mono { font-size: 15px; font-weight: 600; }
+
+  /* --------------------------------------------------------------- table */
+  .tablewrap {
+    margin-top: 18px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .tablebar {
+    display: flex; flex-wrap: wrap; gap: 14px;
+    align-items: center; justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+  }
+
+  .tablebar input[type="search"] {
+    flex: 1 1 240px;
+    min-width: 0;
+    font: inherit;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 9px 12px;
+    outline: none;
+  }
+  .tablebar input[type="search"]:focus { border-color: #3a4152; }
+  .tablebar input[type="search"]::placeholder { color: var(--muted); }
+
+  .rowcount { font-size: 13.5px; color: var(--muted); white-space: nowrap; }
+  .rowcount b { color: var(--text); font-weight: 650; }
+
+  .scroller { max-height: 560px; overflow: auto; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+
+  thead th {
+    position: sticky; top: 0; z-index: 1;
+    background: var(--panel-2);
+    color: var(--muted);
+    font-size: 11.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  tbody td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    white-space: nowrap;
+  }
+  tbody tr:nth-child(even) { background: var(--panel-2); }
+  tbody tr:last-child td { border-bottom: 0; }
+
+  td.num { text-align: right; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+  td.id  { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+  td.sp  { font-weight: 600; }
+
+  .sex {
+    display: inline-block;
+    font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    border-radius: 999px; padding: 2px 9px;
+    border: 1px solid var(--border); color: var(--muted); background: var(--panel);
+  }
+
+  .empty { padding: 26px 18px; color: var(--muted); text-align: center; }
+
+  /* ---------------------------------------------------------- skeleton/err */
+  .loading { padding: 34px 18px; color: var(--muted); text-align: center; }
+
+  details {
+    margin: 16px 0 0;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    max-width: var(--measure);
+  }
+  details summary { cursor: pointer; color: var(--muted); font-size: 14px; font-weight: 600; }
+  details summary:hover { color: var(--text); }
+  details pre { margin: 14px 0 0; background: var(--panel-2); }
+
+  /* --------------------------------------------------------------- footer */
+  .nextnav {
+    display: flex; flex-wrap: wrap; gap: 14px;
+    align-items: center; justify-content: space-between;
+    margin-top: 20px;
+  }
+  footer {
+    margin-top: 64px; padding-top: 22px;
+    border-top: 1px solid var(--border);
+    color: var(--muted); font-size: 13.5px;
+  }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 36px 16px 72px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ==================================================== HERO -->
+  <header class="prose">
+    <div class="kicker">Supabase Auth · Page 1 of 5</div>
+    <h1>Reading data from the <span class="accent">penguins</span> table</h1>
+    <p class="lede">
+      Before we can secure anything, we need something worth securing. This page
+      connects to a real Supabase database and pulls out all 344 rows — with no
+      login, no password, and no security at all.
+    </p>
+  </header>
+
+  <div class="prose">
+    <div class="note">
+      <p>
+        <strong>Why start here?</strong> Right now the <code>penguins</code> table has
+        <strong>Row Level Security switched off</strong>. That means anyone who knows the
+        project URL and the publishable key can read the whole table — including you,
+        right now, without an account. That is a genuine, extremely common mistake.
+        By the end of the workshop you will know exactly how to close it.
+      </p>
+    </div>
+  </div>
+
+  <!-- ============================================ LIVE STATUS -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">Live status</div>
+      <h2>Did it work?</h2>
+      <p>
+        This panel updates itself the moment the page finishes talking to the database.
+        If something is broken, the error appears here in red — that is the first thing
+        to check when a page misbehaves.
+      </p>
+    </div>
+
+    <div id="statusCard" class="card" style="margin-top:18px;">
+      <span id="statusPill" class="pill load"><span class="dot"></span> Connecting…</span>
+      <div id="statusText" style="margin-top:14px;color:var(--muted);font-size:14.5px;">
+        Opening a connection to Supabase and asking for every row in the
+        <code>penguins</code> table…
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="k">Rows returned</div>
+          <div class="v" id="statRows">—</div>
+        </div>
+        <div class="stat">
+          <div class="k">Columns</div>
+          <div class="v" id="statCols">—</div>
+        </div>
+        <div class="stat">
+          <div class="k">Round trip</div>
+          <div class="v" id="statTime">—</div>
+        </div>
+        <div class="stat">
+          <div class="k">Logged in as</div>
+          <div class="v mono" id="statUser">nobody</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================ THE 4 STEPS -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">How it works</div>
+      <h2>Four steps, start to finish</h2>
+      <p>Every Supabase page you ever write follows this same shape.</p>
+    </div>
+
+    <div class="step">
+      <div class="num">1</div>
+      <div class="body">
+        <h3>Load the Supabase library</h3>
+        <p>
+          A <code>&lt;script&gt;</code> tag pulls the official <code>supabase-js</code>
+          library from a CDN. It is a normal JavaScript file — no build tools, no
+          <code>npm install</code>, no framework. It creates one global object called
+          <code>supabase</code>.
+        </p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">2</div>
+      <div class="body">
+        <h3>Create a client</h3>
+        <p>
+          <code>supabase.createClient(url, key)</code> gives you an object that knows
+          <em>which</em> project to talk to. We store it as <code>db</code> in
+          <code>supabase-config.js</code> so all five pages share one setup.
+        </p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">3</div>
+      <div class="body">
+        <h3>Ask for the data</h3>
+        <p>
+          <code>db.from('penguins').select('*')</code> means
+          <em>“from the penguins table, give me every column.”</em> This is an
+          <code>await</code>ed call, so it hands back a result object rather than
+          freezing the page.
+        </p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">4</div>
+      <div class="body">
+        <h3>Check for an error, then draw</h3>
+        <p>
+          Supabase does <strong>not</strong> throw when a query fails. It returns
+          <code>{ data, error }</code> and expects you to look. Checking
+          <code>error</code> before touching <code>data</code> is the habit that
+          separates working code from mysterious blank screens.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================ THE DATA -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">The result</div>
+      <h2>All 344 penguins</h2>
+      <p>
+        Type in the box to filter the table. Notice that the filtering happens
+        entirely in your browser — no extra database request is made, because the
+        data is already here. That is worth thinking about: we downloaded the whole
+        table just to show part of it.
+      </p>
+    </div>
+
+    <div class="tablewrap">
+      <div class="tablebar">
+        <input id="filter" type="search" placeholder="Filter by species, island, sex or year…" aria-label="Filter rows">
+        <div class="rowcount" id="rowcount">Waiting for data…</div>
+      </div>
+
+      <div class="scroller">
+        <table id="dataTable">
+          <thead>
+            <tr>
+              <th>id</th>
+              <th>species</th>
+              <th>island</th>
+              <th style="text-align:right">bill len</th>
+              <th style="text-align:right">bill dep</th>
+              <th style="text-align:right">flipper</th>
+              <th style="text-align:right">mass (g)</th>
+              <th>sex</th>
+              <th style="text-align:right">year</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="9" class="loading">Loading data from Supabase…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="prose">
+      <details>
+        <summary>Show the raw JSON for the first row (what the database actually sends back)</summary>
+        <pre><code id="rawJson">Waiting…</code></pre>
+      </details>
+
+      <div class="note">
+        <p>
+          <strong>The data is messier than it looks.</strong> 11 rows have the text
+          <code>NA</code> in the <code>sex</code> column, and 2 rows use <code>0</code>
+          for every measurement. Neither is a real missing value — a person typed a
+          placeholder instead. Notice that the dash-we-print-for-null rule in the code
+          almost never fires here, because this table contains <strong>no true
+          <code>null</code> values at all</strong>. Deciding what counts as “missing” is
+          a data problem, not an authentication problem — but you will usually meet
+          both at the same time.
+        </p>
+      </div>
+
+      <div class="warn">
+        <p>
+          <strong>Careful with big tables.</strong> Supabase returns a maximum of
+          <strong>1000 rows</strong> per request by default. Our table has 344, so we
+          get all of them by luck rather than by design. If your table had 50,000 rows,
+          this page would silently show only the first 1000 and you would probably
+          never notice. Real apps ask for pages of data, or ask for a count first.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <!-- ============================================ THE CODE -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">Reference</div>
+      <h2>The entire data-fetching script</h2>
+      <p>
+        This is the whole thing — nothing has been hidden. Read it top to bottom and
+        compare it against the four steps above.
+      </p>
+    </div>
+
+    <pre><code id="codeSample"><span class="tok-com">// 1. The library is already loaded (see the &lt;script&gt; tags at the
+//    bottom of this file). 2. The client already exists as `db`
+//    (see supabase-config.js).</span>
+
+<span class="tok-com">// 3. Ask the database for everything in the penguins table.</span>
+const { <span class="tok-key">data</span>, <span class="tok-key">error</span> } = <span class="tok-key">await</span> db
+  .from(<span class="tok-str">'penguins'</span>)     <span class="tok-com">// which table?</span>
+  .select(<span class="tok-str">'*'</span>)          <span class="tok-com">// which columns? (* = all of them)</span>
+  .order(<span class="tok-str">'id'</span>, { ascending: <span class="tok-key">true</span> });
+
+<span class="tok-com">// 4. Always check the error BEFORE you use the data.</span>
+if (error) {
+  console.error(<span class="tok-str">'The query failed:'</span>, error.message);
+} else {
+  console.log(<span class="tok-str">'We got'</span>, data.length, <span class="tok-str">'rows'</span>);
+  console.table(data);        <span class="tok-com">// try this in your own console!</span>
+}</code></pre>
+  </section>
+
+  <!-- ============================================ WHAT JUST HAPPENED -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">Under the hood</div>
+      <h2>What just happened?</h2>
+
+      <p>
+        When this page loaded, your browser sent an HTTP request that looked roughly
+        like this:
+      </p>
+    </div>
+
+    <pre><code>GET /rest/v1/penguins?select=*
+
+apikey: sb_publishable_ONnalS_8pdIUH2Qrsz67CA_z4Wco9I2
+Authorization: Bearer sb_publishable_ONnalS_8pdIUH2Qrsz67CA_z4Wco9I2</code></pre>
+
+    <div class="prose">
+      <p>
+        No username. No password. No session token. Just the publishable key, which
+        is sitting in plain text in <code>supabase-config.js</code> where anyone can
+        read it. And the database said <em>yes</em> and handed over all 344 rows.
+      </p>
+
+      <div class="danger">
+        <p>
+          <strong>This is the problem we are about to solve.</strong> The publishable
+          key is not the flaw — it is <em>supposed</em> to be public. The flaw is that
+          the <code>penguins</code> table has no Row Level Security, so Supabase has no
+          rule to consult before answering. With RLS switched off, “who is asking?” never
+          gets asked, and <em>everyone</em> is effectively a full member of staff.
+        </p>
+      </div>
+
+      <p>
+        Delete the key from <code>supabase-config.js</code> and this page breaks
+        completely — that is the only lock currently on the door, and it is printed on
+        the outside of the door.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================ NEXT -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">Next</div>
+      <h2>Where we go from here</h2>
+      <p>
+        Over the next pages we keep this table exactly as it is and start adding
+        real security: first locking it down so nobody can write, then giving the
+        browser an identity to work with, and finally using the logged-in user's
+        own <code>id</code> to decide which rows they are allowed to see.
+      </p>
+
+      <div class="nextnav">
+        <span class="pill">Page 1 · Read data (RLS off)</span>
+        <a class="pill" href="page-2-rls.html">Page 2 · RLS on vs RLS off →</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p style="margin:0;">
+      Supabase Auth workshop · page 1 of 5 · project
+      <span class="mono" style="color:var(--muted)">decwucuwqnzrxzbxxifu</span>
+    </p>
+  </footer>
+
+</div>
+
+<!-- ==========================================================================
+     SCRIPTS — the ORDER of these three lines is the whole point.
+     ========================================================================== -->
+
+<!-- 1. The official library, straight from a CDN. Creates a global `supabase`. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
+
+<!-- 2. Our shared settings. This is what creates the `db` client. -->
+<script src="supabase-config.js"></script>
+
+<!-- 3. This page's own logic. -->
+<script>
+(async function () {
+  'use strict';
+
+  /* ---------------------------------------------------------- DOM handles */
+  const statusPill = document.getElementById('statusPill');
+  const statusText = document.getElementById('statusText');
+  const statRows   = document.getElementById('statRows');
+  const statCols   = document.getElementById('statCols');
+  const statTime   = document.getElementById('statTime');
+  const statUser   = document.getElementById('statUser');
+  const tbody      = document.getElementById('tbody');
+  const filterBox  = document.getElementById('filter');
+  const rowcount   = document.getElementById('rowcount');
+
+  /* We keep every row in memory so the filter box can work instantly. */
+  let allRows = [];
+
+  try {
+    /* ------------------------------------------------- 1. who am I? */
+    /* Nobody, yet. This returns null because we have not logged in.   */
+    const { data: sessionData } = await db.auth.getSession();
+    statUser.textContent = sessionData.session ? sessionData.session.user.email : 'nobody (anonymous)';
+
+    /* ------------------------------------------------- 2. the query */
+    const startedAt = performance.now();
+
+    const { data, error } = await db
+      .from('penguins')
+      .select('*')
+      .order('id', { ascending: true });
+
+    const elapsed = Math.round(performance.now() - startedAt);
+
+    /* ---------------------------------- 3. check the error FIRST */
+    /* Supabase reports problems in `error`; it does not throw.      */
+    if (error) throw error;
+
+    allRows = data || [];
+
+    /* ------------------------------------------------- 4. draw it */
+    if (allRows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" class="empty">The table exists but returned no rows.</td></tr>';
+    } else {
+      render(allRows);
+      document.getElementById('rawJson').textContent = JSON.stringify(allRows[0], null, 2);
+    }
+
+    statusPill.className = 'pill ok';
+    statusPill.innerHTML = '<span class="dot"></span> Success';
+    statusText.innerHTML =
+      'The query succeeded. Supabase returned <b>' + allRows.length +
+      '</b> rows with no authentication of any kind.';
+    statRows.textContent = allRows.length;
+    statCols.textContent = allRows.length ? Object.keys(allRows[0]).length : 0;
+    statTime.textContent = elapsed + ' ms';
+
+    console.log('[page 1] Loaded', allRows.length, 'rows in', elapsed, 'ms');
+    console.log('[page 1] First row:', allRows[0]);
+
+  } catch (err) {
+    /* ------------------------------------------- something went wrong */
+    statusPill.className = 'pill bad';
+    statusPill.innerHTML = '<span class="dot"></span> Failed';
+    statusText.innerHTML =
+      'Supabase refused the request or the network failed. Read the message below — ' +
+      'it usually tells you exactly what is wrong.';
+    tbody.innerHTML =
+      '<tr><td colspan="9" class="empty" style="color:var(--danger)">Could not load data.</td></tr>';
+    rowcount.textContent = 'No data';
+
+    /* Show the full error on the page instead of only in the console. */
+    const box = document.createElement('div');
+    box.className = 'danger';
+    const h = document.createElement('p');
+    const strong = document.createElement('strong');
+    strong.textContent = 'Error: ';
+    h.appendChild(strong);
+    h.appendChild(document.createTextNode(err.message || String(err)));
+    box.appendChild(h);
+
+    if (err.hint || err.details || err.code) {
+      const extra = document.createElement('p');
+      extra.className = 'mono';
+      extra.style.marginTop = '10px';
+      extra.textContent = [
+        err.code    ? 'code: '    + err.code    : '',
+        err.details ? 'details: ' + err.details : '',
+        err.hint    ? 'hint: '    + err.hint    : ''
+      ].filter(Boolean).join('\n');
+      extra.style.whiteSpace = 'pre-wrap';
+      box.appendChild(extra);
+    }
+
+    statusText.parentNode.insertBefore(box, statusText.nextSibling);
+    console.error('[page 1] Query failed:', err);
+  }
+
+  /* ==================================================================
+     Rendering. Note we build cells with textContent, never by gluing
+     strings into innerHTML. Values from a database are untrusted input,
+     and textContent cannot be tricked into executing anything.
+     ================================================================== */
+  function render(rows) {
+    const frag = document.createDocumentFragment();
+
+    for (const row of rows) {
+      const tr = document.createElement('tr');
+
+      tr.appendChild(cell(row.id, 'id'));
+      tr.appendChild(cell(row.species, 'sp'));
+      tr.appendChild(cell(row.island));
+      tr.appendChild(cell(row.bill_length_mm, 'num'));
+      tr.appendChild(cell(row.bill_depth_mm, 'num'));
+      tr.appendChild(cell(row.flipper_length_mm, 'num'));
+      tr.appendChild(cell(row.body_mass_g, 'num'));
+      tr.appendChild(cell(row.sex));
+
+      /* A little pill for the sex column, just for readability. */
+      const sexTd = tr.lastChild;
+      if (row.sex) {
+        sexTd.textContent = '';
+        const span = document.createElement('span');
+        span.className = 'sex';
+        span.textContent = row.sex;
+        sexTd.appendChild(span);
+      }
+
+      tr.appendChild(cell(row.year, 'num'));
+      frag.appendChild(tr);
+    }
+
+    /* Replace the whole body in one go — much faster than 344
+       individual appends to the live page. */
+    tbody.textContent = '';
+    tbody.appendChild(frag);
+
+    updateCount(rows.length);
+  }
+
+  function cell(value, className) {
+    const td = document.createElement('td');
+    if (className) td.className = className;
+    /* nulls are shown as a dash so empty cells are obvious. */
+    td.textContent = (value === null || value === undefined) ? '—' : value;
+    return td;
+  }
+
+  function updateCount(shown) {
+    rowcount.innerHTML = 'Showing <b>' + shown + '</b> of <b>' + allRows.length + '</b> rows';
+  }
+
+  /* ------------------------------------------------------- the filter */
+  filterBox.addEventListener('input', function () {
+    const q = filterBox.value.trim().toLowerCase();
+
+    if (!q) { render(allRows); return; }
+
+    const matches = allRows.filter(function (row) {
+      return String(row.species  || '').toLowerCase().includes(q)
+          || String(row.island   || '').toLowerCase().includes(q)
+          || String(row.sex      || '').toLowerCase().includes(q)
+          || String(row.year     || '').toLowerCase().includes(q)
+          || String(row.id       || '').toLowerCase().includes(q);
+    });
+
+    if (matches.length === 0) {
+      /* Built with DOM nodes again, not string concatenation — the search
+         text came from the user and must never be treated as HTML. */
+      tbody.textContent = '';
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = 9;
+      td.className = 'empty';
+      td.textContent = 'Nothing matches “' + filterBox.value + '”.';
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+      updateCount(0);
+      return;
+    }
+
+    render(matches);
+  });
+
+  /* ------------------------------------------------- copy code buttons */
+  document.querySelectorAll('pre').forEach(function (pre) {
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.type = 'button';
+    btn.textContent = 'Copy';
+
+    btn.addEventListener('click', function () {
+      const code = pre.querySelector('code');
+      const text = code ? code.innerText : pre.innerText;
+
+      const done = function () {
+        btn.textContent = 'Copied';
+        btn.classList.add('done');
+        setTimeout(function () {
+          btn.textContent = 'Copy';
+          btn.classList.remove('done');
+        }, 1500);
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () { fallback(text, done); });
+      } else {
+        fallback(text, done);
+      }
+    });
+
+    pre.appendChild(btn);
+  });
+
+  /* Clipboard API needs https:// or localhost. Opening the file directly
+     with file:// counts as "not secure", so we keep a manual fallback. */
+  function fallback(text, done) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { /* ignore */ }
+    document.body.removeChild(ta);
+  }
+})();
+</script>
+</body>
+</html>

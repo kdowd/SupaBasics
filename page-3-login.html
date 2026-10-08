@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page 3 — Logging in: the JWT · Supabase Auth Workshop</title>
+
+<style>
+  /* ======================================================================
+     DESIGN TOKENS — identical to pages 1 and 2
+     ====================================================================== */
+  :root {
+    --bg:      #0e1016;
+    --panel:   #161922;
+    --panel-2: #1d212c;
+    --border:  #272c38;
+
+    --text:  #e7e9ef;
+    --muted: #969db0;
+
+    --accent: #3ecf8e;
+    --blue:   #7cc4ff;
+
+    --warn:   #ffc457;
+    --danger: #ff7b7b;
+
+    --radius: 12px;
+    --measure: 780px;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 420px;
+    background: radial-gradient(60% 100% at 50% 0%, rgba(62, 207, 142, .10), transparent 70%);
+    pointer-events: none;
+  }
+
+  .wrap {
+    position: relative;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 56px 24px 96px;
+  }
+
+  .prose { max-width: var(--measure); }
+
+  /* ---------------------------------------------------------------- type */
+  h1, h2, h3 { letter-spacing: -0.5px; line-height: 1.2; margin: 0; }
+  h1 { font-size: clamp(30px, 5vw, 44px); letter-spacing: -1.2px; font-weight: 800; }
+  h2 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+  h3 { font-size: 17px; font-weight: 650; letter-spacing: -0.2px; }
+
+  p { margin: 0 0 14px; color: var(--text); }
+  .lede { font-size: 18px; color: var(--muted); margin-top: 14px; }
+
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .accent { color: var(--accent); }
+
+  code, .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13.5px;
+  }
+  p code, li code, td code, .prose code {
+    color: var(--accent);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1px 6px;
+    white-space: nowrap;
+  }
+
+  /* ------------------------------------------------------------ structure */
+  section { margin-top: 56px; }
+  .sec-label {
+    font-size: 12px; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
+  }
+  .rule { height: 1px; background: var(--border); border: 0; margin: 56px 0; }
+
+  .kicker {
+    display: inline-block;
+    font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--accent);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 14px;
+    margin-bottom: 22px;
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px 24px;
+  }
+
+  /* ------------------------------------------------------------ callouts */
+  .note, .warn, .danger, .okbox {
+    border-radius: 12px; padding: 16px 18px; margin: 20px 0;
+    max-width: var(--measure);
+  }
+  .note   { background: #131c26; border: 1px solid #24405a; }
+  .warn   { background: #241d0f; border: 1px solid #4a3a1a; }
+  .danger { background: #241416; border: 1px solid #5a262a; }
+  .okbox  { background: #10231a; border: 1px solid #245039; }
+  .note   strong { color: var(--blue); }
+  .warn   strong { color: var(--warn); }
+  .danger strong { color: var(--danger); }
+  .okbox  strong { color: var(--accent); }
+  .note p:last-child, .warn p:last-child, .danger p:last-child, .okbox p:last-child { margin-bottom: 0; }
+
+  /* --------------------------------------------------------------- pills */
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 11.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    border-radius: 999px; padding: 5px 12px;
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--muted);
+  }
+  .pill.ok   { color: var(--accent); border-color: #245039; background: #10231a; }
+  .pill.bad  { color: var(--danger); border-color: #5a262a; background: #241416; }
+  .pill.load { color: var(--warn);   border-color: #4a3a1a; background: #241d0f; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+
+  /* -------------------------------------------------------------- buttons */
+  .btn {
+    font: 600 14px/1 ui-sans-serif, system-ui, -apple-system, sans-serif;
+    border-radius: 9px; padding: 11px 15px;
+    border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--text);
+    cursor: pointer;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  .btn:hover:not(:disabled) { border-color: #3a4152; }
+  .btn.primary { background: var(--accent); color: #06231a; border-color: var(--accent); font-weight: 700; }
+  .btn.primary:hover:not(:disabled) { background: #4bd99a; }
+  .btn.ghost { background: transparent; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* ----------------------------------------------------------- login form */
+  .formgrid { display: grid; gap: 14px; margin-top: 18px; max-width: 460px; }
+  .field label {
+    display: block;
+    font-size: 11.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 7px;
+  }
+  .field input {
+    width: 100%;
+    font: inherit; font-size: 15px;
+    color: var(--text);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 13px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .field input:focus { border-color: #3a4152; }
+  .field input::placeholder { color: var(--muted); }
+
+  .formactions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 4px; }
+
+  .formeror {
+    margin-top: 16px; padding: 14px 16px;
+    border-radius: 12px;
+    background: #241416; border: 1px solid #5a262a;
+    font-size: 14px;
+  }
+  .formeror .etitle { font-weight: 700; color: var(--danger); }
+  .formeror .edetail { color: var(--muted); margin-top: 6px; font-size: 13px; }
+  .formeror .ecode {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px; color: var(--danger); margin-top: 6px;
+  }
+  .formeror[hidden] { display: none; }
+
+  /* --------------------------------------------------------- who am I box */
+  .whoami {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-top: 18px;
+  }
+  .whoami .cell { background: var(--panel-2); padding: 14px 16px; }
+  .whoami .k {
+    font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 5px;
+  }
+  .whoami .v { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13.5px; word-break: break-all; }
+  .whoami .v.big { color: var(--accent); font-weight: 600; }
+
+  /* ------------------------------------------------------------ tables */
+  .sumwrap {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden; margin-top: 18px;
+  }
+  .sumtable { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 0; }
+  .sumtable th {
+    background: var(--panel-2); color: var(--muted);
+    font-size: 11.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border);
+  }
+  .sumtable td {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    font-size: 14px; color: var(--muted);
+  }
+  .sumtable tbody tr:nth-child(even) { background: var(--panel-2); }
+  .sumtable tbody tr:last-child td { border-bottom: 0; }
+  .sumtable td:first-child {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px; color: var(--accent); white-space: nowrap;
+  }
+  .sumtable td strong { color: var(--text); }
+
+  /* ------------------------------------------------------------ jwt blocks */
+  .jwt { margin-top: 18px; }
+  .jwtpart {
+    border-radius: 12px; border: 1px solid var(--border);
+    overflow: hidden; margin-bottom: 12px;
+  }
+  .jwthead {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 10px 14px;
+    font-size: 11.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    background: var(--panel-2);
+    border-bottom: 1px solid var(--border);
+  }
+  .jwthead .pname { display: flex; align-items: center; gap: 9px; }
+  .jwtnum {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--accent); color: #06231a;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10.5px; font-weight: 800;
+  }
+  .jwtpart.sig .jwtnum { background: var(--warn); }
+  .jwtpart.hdr .jwtnum { background: var(--blue); }
+  .jwthead .ptype { color: var(--muted); font-weight: 600; letter-spacing: .06em; }
+  .jwtbody { padding: 0; }
+  .jwtbody pre {
+    margin: 0; border: 0; border-radius: 0;
+    background: var(--panel); padding: 14px 16px;
+    font-size: 13px;
+  }
+  .jwtpart.hdr  .jwtbody pre { background: #131c26; }
+  .jwtpart.sig  .jwtbody pre { background: #241d0f; }
+
+  .rawwrap { margin-top: 16px; }
+  .rawtok {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px; color: var(--muted);
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px;
+    word-break: break-all; max-height: 120px; overflow-y: auto;
+  }
+
+  .claimhi {
+    background: rgba(62,207,142,.14);
+    border-radius: 4px;
+    padding: 0 4px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* ------------------------------------------------------------ log/steps */
+  .log { margin-top: 14px; }
+  .log:empty::after {
+    content: "Nothing tried yet.";
+    display: block; padding: 10px 0; color: var(--muted); font-size: 13.5px;
+  }
+  .lstep {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .lstep:last-child { border-bottom: 0; }
+  .mark { flex: none; width: 16px; text-align: center; font-weight: 800; font-size: 13px; line-height: 1.5; }
+  .mark.ok      { color: var(--accent); }
+  .mark.blocked { color: var(--warn); }
+  .mark.fail    { color: var(--danger); }
+  .mark.info    { color: var(--blue); }
+  .lbody { min-width: 0; flex: 1; }
+  .lop { font-size: 13.5px; font-weight: 650; }
+  .ltarget { color: var(--muted); font-weight: 400; }
+  .ldetail {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12.5px; color: var(--muted); margin-top: 2px; word-break: break-word;
+  }
+  .ldetail.ok { color: var(--accent); }
+  .ldetail.blocked { color: var(--warn); }
+  .ldetail.fail { color: var(--danger); }
+
+  /* ---------------------------------------------------------- code blocks */
+  pre {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    margin: 14px 0;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  pre code { color: var(--text); white-space: pre; }
+
+  .tok-key { color: var(--blue); }
+  .tok-str { color: var(--accent); }
+  .tok-com { color: var(--muted); }
+
+  .copy-btn {
+    position: absolute; top: 10px; right: 10px;
+    font: 600 11.5px/1 ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: .06em; text-transform: uppercase;
+    color: var(--muted); background: var(--panel-2);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 7px 10px; cursor: pointer;
+    transition: color .15s, border-color .15s;
+  }
+  .copy-btn:hover { color: var(--text); border-color: #3a4152; }
+  .copy-btn.done { color: var(--accent); border-color: #245039; }
+
+  .step { display: flex; gap: 16px; margin: 30px 0; }
+  .step .num {
+    flex: 0 0 34px; height: 34px; border-radius: 50%;
+    background: var(--accent); color: #06231a;
+    display: flex; align-items: center; justify-content: center; font-weight: 800;
+  }
+  .step .body { min-width: 0; flex: 1; }
+  .step .body p:last-child { margin-bottom: 0; }
+
+  .nextnav {
+    display: flex; flex-wrap: wrap; gap: 14px;
+    align-items: center; justify-content: space-between;
+    margin-top: 20px;
+  }
+  footer {
+    margin-top: 64px; padding-top: 22px;
+    border-top: 1px solid var(--border);
+    color: var(--muted); font-size: 13.5px;
+  }
+
+  .hidden { display: none !important; }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 36px 16px 72px; }
+    .card { padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ==================================================== HERO -->
+  <header class="prose">
+    <div class="kicker">Supabase Auth · Page 3 of 5</div>
+    <h1>Logging in: swapping an <span class="accent">anon key</span> for a <span class="accent">JWT</span></h1>
+    <p class="lede">
+      On page 2 we proved that only <code>authenticated</code> users may insert into
+      <code>penguins_rls_on</code>. Now we make the browser become one — and look at
+      exactly what the server sends back when we do.
+    </p>
+  </header>
+
+  <div class="prose">
+    <div class="note">
+      <p>
+        <strong>The whole page in one sentence:</strong> logging in does not change
+        your policy, and it does not change your key. It changes the
+        <code>Authorization</code> header on every request from an anonymous key into a
+        signed token that says <em>“I am admin@admin.com, and my role is
+        authenticated.”</em> Postgres reads that role, and your insert policy finally
+        matches.
+      </p>
+    </div>
+  </div>
+
+  <!-- ============================================ LOGIN -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">Step one</div>
+      <h2>Sign in</h2>
+      <p>
+        This calls <code>db.auth.signInWithPassword()</code>, which sends your email and
+        password to Supabase over HTTPS. Supabase checks them and — if they are right —
+        returns a session.
+      </p>
+    </div>
+
+    <div class="card" style="margin-top:18px;">
+      <span id="authPill" class="pill load"><span class="dot"></span> Checking session…</span>
+
+      <!-- ------------------------------------------------ signed out -->
+      <div id="signedOut">
+        <div class="formgrid">
+          <div class="field">
+            <label for="email">Email</label>
+            <input id="email" type="email" autocomplete="username"
+                   placeholder="admin@admin.com" spellcheck="false">
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <input id="password" type="password" autocomplete="current-password"
+                   placeholder="your Supabase password">
+          </div>
+          <div class="formactions">
+            <button class="btn primary" id="signInBtn" type="button">Sign in</button>
+            <span class="mono" style="color:var(--muted);font-size:12.5px;">
+              password is sent to Supabase, never stored here
+            </span>
+          </div>
+        </div>
+
+        <div class="formeror" id="formError" hidden>
+          <div class="etitle" id="errTitle"></div>
+          <div class="edetail" id="errDetail"></div>
+          <div class="ecode" id="errCode"></div>
+        </div>
+      </div>
+
+      <!-- ------------------------------------------------ signed in -->
+      <div id="signedIn" class="hidden">
+        <div class="whoami">
+          <div class="cell">
+            <div class="k">Signed in as</div>
+            <div class="v big" id="meEmail">—</div>
+          </div>
+          <div class="cell">
+            <div class="k">Role in the token</div>
+            <div class="v big" id="meRole">—</div>
+          </div>
+          <div class="cell">
+            <div class="k">User id (JWT <span class="mono">sub</span>)</div>
+            <div class="v" id="meId">—</div>
+          </div>
+          <div class="cell">
+            <div class="k">Token expires in</div>
+            <div class="v" id="meExp">—</div>
+          </div>
+        </div>
+
+        <div class="formactions" style="margin-top:16px;">
+          <button class="btn" id="signOutBtn" type="button">Sign out</button>
+          <button class="btn ghost" id="refreshBtn" type="button">Force a token refresh</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================ THE PROOF -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">Step two</div>
+      <h2>Try the thing that was forbidden</h2>
+      <p>
+        On page 2 this exact insert failed while signed out. Press the button now —
+        signed in — and watch it succeed. Same policy, same URL, same publishable key.
+        The only thing that changed is who the request claims to be.
+      </p>
+    </div>
+
+    <div class="card" style="margin-top:18px;">
+      <div class="formactions" style="margin-top:0;">
+        <button class="btn primary" id="insertBtn" type="button">Insert a row into penguins_rls_on</button>
+        <button class="btn ghost" id="readBtn" type="button">Count the rows</button>
+      </div>
+      <div class="log" id="proofLog"></div>
+    </div>
+
+    <div class="prose">
+      <div class="warn">
+        <p>
+          <strong>You gave INSERT but not DELETE.</strong> Your table has a select
+          policy and an insert policy, and nothing else — so once a row is in there,
+          <em>nobody</em> can remove it through the API, including you while logged in.
+          We proved that earlier: the delete came back <code>HTTP 200</code> with an
+          empty list, reporting success while deleting nothing.
+        </p>
+        <p style="margin-top:10px;">
+          That is RLS being per-operation, and it is worth saying out loud in class: each
+          of <code>select</code>, <code>insert</code>, <code>update</code> and
+          <code>delete</code> is permitted separately. Clear up test rows in the SQL
+          Editor:
+        </p>
+      </div>
+    </div>
+
+    <pre><code><span class="tok-com">-- remove the rows page 3 adds during class</span>
+<span class="tok-key">delete from</span> public.penguins_rls_on
+<span class="tok-key">where</span> species = <span class="tok-str">'__TEST_LOGIN__'</span>;</code></pre>
+
+    <div class="prose">
+      <h3 style="margin-top:26px;">The better fix: let students delete <em>their own</em> test rows</h3>
+      <p>
+        You could hand <code>authenticated</code> a delete policy with
+        <code>using (true)</code>, but stop and think about what that means: any logged-in
+        user could delete all 344 penguins with one line. <code>true</code> is the most
+        dangerous word in a policy.
+      </p>
+      <p>
+        Instead, give delete a real condition — one that only matches the rows this page
+        creates:
+      </p>
+    </div>
+
+    <pre><code><span class="tok-key">create policy</span> <span class="tok-str">"Students can delete their own test rows"</span>
+  <span class="tok-key">on</span> public.penguins_rls_on
+  <span class="tok-key">for delete</span>
+  <span class="tok-key">to</span> authenticated
+  <span class="tok-key">using</span> ( species = <span class="tok-str">'__TEST_LOGIN__'</span> );</code></pre>
+
+    <div class="prose">
+      <p>
+        Now a logged-in student can tidy up after themselves, but the <code>using</code>
+        clause means a delete aimed at a real penguin matches <strong>zero rows</strong> —
+        silently, as always. You get a self-cleaning classroom without opening the door,
+        and it is a perfect preview of page 4, where <code>true</code> is replaced by
+        <code>auth.uid() = user_id</code>.
+      </p>
+
+      <div class="note">
+        <p>
+          <strong>Doing it in the dashboard instead:</strong> Database → Policies →
+          <em>New Policy</em> → <em>Create a policy from scratch</em>. Pick the
+          <code>DELETE</code> command, tick the <code>authenticated</code> role, and paste
+          <code>species = '__TEST_LOGIN__'</code> into the <em>USING expression</em> box.
+          Leave the <em>WITH CHECK</em> box empty — delete has no new row to check, which is
+          why Supabase greys it out.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <!-- ============================================ THE JWT -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">The explanation you asked for</div>
+      <h2>What a JWT actually is</h2>
+      <p>
+        <strong>JWT</strong> stands for <em>JSON Web Token</em>. It is just a string with
+        three parts separated by dots:
+      </p>
+    </div>
+
+    <pre><code>eyJhbGciOiJFUzI1NiIsImtpZCI6...</code></pre>
+
+    <div class="prose">
+      <div class="step">
+        <div class="num">1</div>
+        <div class="body">
+          <h3>It is encoded, not encrypted</h3>
+          <p>
+            Each part is Base64URL text — a way of writing bytes using only safe
+            characters. It is <em>not</em> secret and <em>not</em> scrambled. Anyone
+            holding the token can read every claim inside it, which is exactly why this
+            page can decode yours and print it below. A JWT is a <strong>wristband, not a
+            sealed envelope</strong>.
+          </p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="num">2</div>
+        <div class="body">
+          <h3>The third part is a signature, and that is the point</h3>
+          <p>
+            Supabase signs the first two parts with a private key that never leaves their
+            servers. Your project uses <code>ES256</code> (ECDSA over the P-256 curve);
+            the <code>kid</code> in the header names which key was used. Change a single
+            character of the payload and the signature no longer matches, so the server
+            rejects it. You can <em>read</em> a JWT freely, but you cannot
+            <em>forge</em> one — which is why the browser is allowed to hold it.
+          </p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="num">3</div>
+        <div class="body">
+          <h3>One claim does all the work: <code>role</code></h3>
+          <p>
+            The payload contains <code>"role": "authenticated"</code>. When a request
+            arrives with this token, PostgREST verifies the signature, reads that claim,
+            and runs the query as the Postgres role named <code>authenticated</code>.
+            Your policy says <code>to authenticated</code>, so now it matches. That is
+            the entire mechanism connecting “I logged in” to “the database let me write”.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---------------------------------------- live decoded token -->
+    <div id="jwtSection" class="hidden">
+      <div class="prose">
+        <div class="sec-label">Your token, right now</div>
+        <h2>Decoded live in your browser</h2>
+        <p>
+          This is your real token, split apart and decoded with nothing but
+          <code>atob()</code>. No secret was needed to read it — that is the point.
+        </p>
+      </div>
+
+      <div class="jwt">
+        <div class="jwtpart hdr">
+          <div class="jwthead">
+            <span class="pname"><span class="jwtnum">1</span> Header</span>
+            <span class="ptype">which algorithm signed this</span>
+          </div>
+          <div class="jwtbody"><pre><code id="jwtHeader"></code></pre></div>
+        </div>
+
+        <div class="jwtpart">
+          <div class="jwthead">
+            <span class="pname"><span class="jwtnum">2</span> Payload</span>
+            <span class="ptype">the claims — look for <code>role</code></span>
+          </div>
+          <div class="jwtbody"><pre><code id="jwtPayload"></code></pre></div>
+        </div>
+
+        <div class="jwtpart sig">
+          <div class="jwthead">
+            <span class="pname"><span class="jwtnum">3</span> Signature</span>
+            <span class="ptype">proves it was not edited</span>
+          </div>
+          <div class="jwtbody"><pre><code id="jwtSignature"></code></pre></div>
+        </div>
+      </div>
+
+      <div class="prose rawwrap">
+        <div class="sec-label">The raw token</div>
+        <p>
+          Paste this into <a href="https://jwt.io" target="_blank" rel="noopener">jwt.io</a>
+          if you like — it will decode the same three parts. Note that jwt.io cannot
+          <em>verify</em> the signature without your project's public key, and it does not
+          need to: only Supabase's servers have to trust it.
+        </p>
+        <div class="rawtok" id="rawToken"></div>
+        <div class="formactions" style="margin-top:12px;">
+          <button class="btn ghost" id="copyTokenBtn" type="button">Copy token</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="prose">
+      <h3 style="margin-top:30px;">What the claims mean</h3>
+      <div class="sumwrap" style="margin-top:14px;">
+        <table class="sumtable">
+          <thead>
+            <tr><th>Claim</th><th>Meaning</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>sub</code></td><td>The user's permanent id (a UUID). This is the value page 5 will compare against a <code>user_id</code> column.</td></tr>
+            <tr><td><code>role</code></td><td><code>authenticated</code>. This single claim is what your RLS policy matches on.</td></tr>
+            <tr><td><code>aud</code></td><td>“Audience” — who the token is for. Also <code>authenticated</code>.</td></tr>
+            <tr><td><code>exp</code> / <code>iat</code></td><td>Expiry and issue time. Exactly one hour apart here, so the access token is short-lived on purpose.</td></tr>
+            <tr><td><code>email</code></td><td>Handy for display — <strong>never</strong> for authorization. Use <code>sub</code>; people change email addresses.</td></tr>
+            <tr><td><code>aal</code> / <code>amr</code></td><td>How strongly you proved who you are, and how you did it — here <code>aal1</code> via <code>password</code>. A second factor would raise this to <code>aal2</code>.</td></tr>
+            <tr><td><code>session_id</code></td><td>Identifies this one login, so the server can revoke it without affecting your other devices.</td></tr>
+            <tr><td><code>is_anonymous</code></td><td><code>false</code>. Supabase supports real anonymous sign-in, and this flag is how you tell them apart.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================ TWO HEADERS -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">The bit that usually confuses people</div>
+      <h2>Two headers, two completely different jobs</h2>
+      <p>
+        Every request to Supabase carries two identity headers. Students very often
+        assume the publishable key is what does the authorising. It is not.
+      </p>
+    </div>
+
+    <pre><code><span class="tok-com"># BEFORE logging in — both headers are the same public key</span>
+apikey:        sb_publishable_OnNa...      <span class="tok-com"># which project? always this</span>
+Authorization: Bearer sb_publishable_OnNa... <span class="tok-com"># who? nobody -> role: anon</span>
+
+<span class="tok-com"># AFTER logging in — only Authorization changed</span>
+apikey:        sb_publishable_OnNa...      <span class="tok-com"># unchanged</span>
+Authorization: Bearer eyJhbGciOiJFUzI1...   <span class="tok-com"># who? admin@admin.com -> role: authenticated</span></code></pre>
+
+    <div class="prose">
+      <div class="note">
+        <p>
+          <strong><code>apikey</code> says which project. <code>Authorization</code> says
+          who is asking.</strong> When you are signed out, Supabase falls back to treating
+          the publishable key itself as the identity, which resolves to the
+          <code>anon</code> role — the exact role your insert policy does not mention.
+          Signing in only ever changes the second line.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================ STORAGE -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">Where does it live?</div>
+      <h2>The session survives the page reload</h2>
+      <p>
+        <code>supabase-js</code> saved that session in your browser's
+        <code>localStorage</code>, under a key named after your project:
+      </p>
+    </div>
+
+    <pre><code>sb-decwucuwqnzrxzbxxifu-auth-token</code></pre>
+
+    <div class="prose">
+      <p>
+        Open DevTools → Application → Local Storage and you will find it sitting there as
+        JSON: the access token, the refresh token, the user object and an expiry
+        timestamp. Reload this page and you will still be logged in — because
+        <code>getSession()</code> reads that entry before any network request happens.
+      </p>
+
+      <div class="danger">
+        <p>
+          <strong>This is why “just hide the button” is not security.</strong> A student
+          can open the console, call <code>db.from('penguins_rls_on').insert(...)</code>
+          directly, or paste the token into their own script — and it will work if the
+          token is valid. No amount of front-end hiding changes that. The only thing
+          standing between a logged-in user and your data is <strong>RLS</strong>. Treat
+          every check in the browser as a courtesy to the user, never as a defence.
+        </p>
+      </div>
+
+      <div class="note">
+        <p>
+          <strong>Why is it safe to keep a token in localStorage?</strong> Because the
+          token is short-lived (one hour) and cannot be forged. If it leaks, the damage is
+          bounded and the session can be revoked server-side via its
+          <code>session_id</code>. The refresh token is the longer-lived secret, and
+          Supabase rotates it on use.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================ TOKEN LIFECYCLE -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">Keeping it alive</div>
+      <h2>Access tokens expire. Refresh tokens renew them.</h2>
+    </div>
+
+    <pre><code><span class="tok-com">// Signing in returns TWO tokens, not one.</span>
+const { data, error } = <span class="tok-key">await</span> db.auth.signInWithPassword({ email, password });
+
+data.session.access_token    <span class="tok-com">// JWT - expires in 1 hour, proves who you are</span>
+data.session.refresh_token   <span class="tok-com">// longer-lived - used ONLY to get a new access token</span></code></pre>
+
+    <div class="prose">
+      <p>
+        You will never see this happen, because <code>supabase-js</code> has
+        <code>autoRefreshToken</code> switched on by default. Roughly five minutes before
+        the access token expires, it quietly POSTs the refresh token to
+        <code>/auth/v1/token?grant_type=refresh_token</code> and receives a brand-new
+        access token. Press <em>Force a token refresh</em> above to do it by hand and
+        watch the token change.
+      </p>
+
+      <div class="warn">
+        <p>
+          <strong>Consequence for testing:</strong> because the browser silently renews
+          tokens, “I deleted the user but they still seem logged in” is a real thing you
+          will hit. Sign out properly, or clear the localStorage entry.
+        </p>
+      </div>
+
+      <h3 style="margin-top:30px;">Two ways to ask “who am I?”</h3>
+      <div class="sumwrap" style="margin-top:14px;">
+        <table class="sumtable">
+          <thead>
+            <tr><th>Method</th><th>What it does</th><th>Trust it for…</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>getSession()</code></td>
+              <td>Reads the stored session locally. Instant, no network.</td>
+              <td>Showing the user's name in the corner.</td>
+            </tr>
+            <tr>
+              <td><code>getUser()</code></td>
+              <td>Asks the auth server to validate the token, every call.</td>
+              <td>Anything that matters. It cannot be faked by editing localStorage.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        <p>
+          <strong>And for real authority, neither of them is the answer — RLS is.</strong>
+          Both of these run in the browser, where the user controls everything. Your
+          policies run in Postgres, where they do not.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================ CONSOLE -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">Try it yourself</div>
+      <h2>Console exercises</h2>
+      <p>Open DevTools while signed in and run these.</p>
+    </div>
+
+    <pre><code><span class="tok-com">// Who does the browser think you are?</span>
+<span class="tok-key">await</span> db.auth.getSession()
+
+<span class="tok-com">// Ask the server instead - this one validates the token</span>
+<span class="tok-key">await</span> db.auth.getUser()
+
+<span class="tok-com">// Where the token lives</span>
+localStorage.getItem(<span class="tok-str">'sb-decwucuwqnzrxzbxxifu-auth-token'</span>)
+
+<span class="tok-com">// Now prove the role is what matters: sign out, then try again</span>
+<span class="tok-key">await</span> db.auth.signOut()
+<span class="tok-key">await</span> db.from(<span class="tok-str">'penguins_rls_on'</span>).insert({ species: <span class="tok-str">'after signout'</span> })
+<span class="tok-com">// -> 42501, exactly like page 2</span>
+
+<span class="tok-com">// Log back in and the same line works</span>
+<span class="tok-key">await</span> db.auth.signInWithPassword({ email: <span class="tok-str">'admin@admin.com'</span>, password: <span class="tok-str">'...'</span> })
+<span class="tok-key">await</span> db.from(<span class="tok-str">'penguins_rls_on'</span>).insert({ species: <span class="tok-str">'signed in'</span> })</code></pre>
+  </section>
+
+  <!-- ============================================ NEXT -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">Next</div>
+      <h2>Where we go from here</h2>
+      <p>
+        You can now prove who you are, and you have followed the whole chain from a public
+        table read to a policy that only fires for logged-in users.
+      </p>
+      <p>
+        Page 4 takes a different turn. Instead of asking Supabase for a <em>table</em>, it
+        asks the database to run a <em>function</em> you wrote yourself — and returns its
+        rows straight to the page. Page 5 is the one your policies are still missing:
+        replacing <code>with check (true)</code> with a rule that says <em>who</em> a row
+        belongs to.
+      </p>
+
+      <div class="nextnav">
+        <a class="pill" href="page-2-rls.html">← Page 2 · RLS on vs RLS off</a>
+        <a class="pill" href="page-4-function.html">Page 4 · Calling a function (RPC) →</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p style="margin:0;">
+      Supabase Auth workshop · page 3 of 5 · project
+      <span class="mono" style="color:var(--muted)">decwucuwqnzrxzbxxifu</span>
+    </p>
+  </footer>
+
+</div>
+
+<!-- ========================================================================== -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
+<script src="supabase-config.js"></script>
+
+<script>
+(async function () {
+  'use strict';
+
+  const TABLE = 'penguins_rls_on';
+  const TEST_SPECIES = '__TEST_LOGIN__';
+
+  const $ = function (id) { return document.getElementById(id); };
+
+  /* ======================================================================
+     JWT decoding — base64url, then JSON. No library, no secret.
+     ====================================================================== */
+  function base64UrlDecode(str) {
+    let s = str.replace(/-/g, '+').replace(/_/g, '/');
+    while (s.length % 4) s += '=';
+    const binary = atob(s);
+    const bytes = Uint8Array.from(binary, function (c) { return c.charCodeAt(0); });
+    return new TextDecoder().decode(bytes);
+  }
+
+  function decodeJwt(token) {
+    const parts = token.split('.');
+    if (parts.length !== 3) throw new Error('Not a JWT');
+    return {
+      header:    JSON.parse(base64UrlDecode(parts[0])),
+      payload:   JSON.parse(base64UrlDecode(parts[1])),
+      signature: parts[2]
+    };
+  }
+
+  /* ======================================================================
+     Log rendering
+     ====================================================================== */
+  function addStep(logEl, kind, op, target, detail) {
+    const marks = { ok: '✓', blocked: '⛔', fail: '✕', info: '•' };
+
+    const row = document.createElement('div');
+    row.className = 'lstep';
+
+    const mark = document.createElement('div');
+    mark.className = 'mark ' + kind;
+    mark.textContent = marks[kind] || '•';
+
+    const body = document.createElement('div');
+    body.className = 'lbody';
+
+    const opEl = document.createElement('div');
+    opEl.className = 'lop';
+    opEl.textContent = op;
+    if (target) {
+      const t = document.createElement('span');
+      t.className = 'ltarget';
+      t.textContent = ' · ' + target;
+      opEl.appendChild(t);
+    }
+
+    const det = document.createElement('div');
+    det.className = 'ldetail ' + kind;
+    det.textContent = detail;
+
+    body.appendChild(opEl);
+    body.appendChild(det);
+    row.appendChild(mark);
+    row.appendChild(body);
+    logEl.appendChild(row);
+  }
+
+  /* ======================================================================
+     Auth UI
+     ====================================================================== */
+  const authPill   = $('authPill');
+  const signedOut  = $('signedOut');
+  const signedIn   = $('signedIn');
+  const jwtSection = $('jwtSection');
+  const formError  = $('formError');
+  const proofLog   = $('proofLog');
+
+  let expiryTimer = null;
+
+  function friendlyError(err) {
+    const code = (err && (err.code || err.error_code)) || '';
+    const msg  = (err && (err.message || err.msg)) || 'Unknown error';
+
+    const map = {
+      invalid_credentials:
+        ['Email or password is incorrect.',
+         'Supabase gives the same message whether the account exists or not — that is deliberate, so nobody can use the login form to discover who has an account.'],
+      email_not_confirmed:
+        ['This account has not confirmed its email address yet.',
+         'Email confirmation is currently switched ON for this project. Either tick "Auto Confirm User" when creating the user, or turn off Confirm email under Authentication → Sign In / Providers → Email.'],
+      user_banned:
+        ['This account has been banned.', 'Unban it in Authentication → Users.'],
+      over_request_rate_limit:
+        ['Too many attempts.', 'Supabase is rate-limiting logins. Wait about a minute and try again.'],
+      over_email_send_rate_limit:
+        ['Too many emails sent.', 'Wait a few minutes before trying again.'],
+      weak_password:
+        ['That password is too weak.', 'Supabase enforces a minimum password policy.']
+    };
+
+    const picked = map[code];
+    return {
+      title:  picked ? picked[0] : msg,
+      detail: picked ? picked[1] : 'This is the message Supabase returned.',
+      code:   code ? (code + '  ·  HTTP ' + (err.status || '?')) : ''
+    };
+  }
+
+  function showError(err) {
+    const f = friendlyError(err);
+    $('errTitle').textContent  = f.title;
+    $('errDetail').textContent = f.detail;
+    $('errCode').textContent   = f.code;
+    formError.hidden = false;
+  }
+
+  function clearError() { formError.hidden = true; }
+
+  /* --------------------------------------------------- render the session */
+  function renderSession(session) {
+    if (expiryTimer) { clearInterval(expiryTimer); expiryTimer = null; }
+
+    if (!session) {
+      authPill.className = 'pill bad';
+      authPill.innerHTML = '<span class="dot"></span> Signed out — role: anon';
+      signedOut.classList.remove('hidden');
+      signedIn.classList.add('hidden');
+      jwtSection.classList.add('hidden');
+      $('insertBtn').disabled = false;
+      $('readBtn').disabled = false;
+      return;
+    }
+
+    authPill.className = 'pill ok';
+    authPill.innerHTML = '<span class="dot"></span> Signed in — role: authenticated';
+
+    signedOut.classList.add('hidden');
+    signedIn.classList.remove('hidden');
+    jwtSection.classList.remove('hidden');
+
+    $('meEmail').textContent = session.user.email;
+
+    /* ---------------------------------------- decode and display the JWT */
+    let decoded = null;
+    try {
+      decoded = decodeJwt(session.access_token);
+    } catch (e) {
+      $('jwtPayload').textContent = 'Could not decode the token: ' + e.message;
+      return;
+    }
+
+    $('meRole').textContent = decoded.payload.role || '(none)';
+    $('meId').textContent   = decoded.payload.sub || '(none)';
+
+    $('jwtHeader').textContent    = JSON.stringify(decoded.header, null, 2);
+    $('jwtPayload').textContent   = JSON.stringify(decoded.payload, null, 2);
+    $('jwtSignature').textContent =
+      decoded.signature + '\n\n' +
+      '(truncated above is the real signature — ' +
+      session.access_token.split('.')[2].length + ' base64url characters)';
+
+    $('rawToken').textContent = session.access_token;
+
+    /* ------------------------------------------- live expiry countdown */
+    const tick = function () {
+      const seconds = Math.max(0, Math.round(session.expires_at - Date.now() / 1000));
+      const mm = Math.floor(seconds / 60);
+      const ss = String(seconds % 60).padStart(2, '0');
+      $('meExp').textContent = seconds > 0
+        ? (mm + ' min ' + ss + ' sec')
+        : 'expired — refreshing…';
+    };
+    tick();
+    expiryTimer = setInterval(tick, 1000);
+  }
+
+  /* ======================================================================
+     Initial state — getSession() reads localStorage, no network needed
+     ====================================================================== */
+  const initial = await db.auth.getSession();
+  renderSession(initial.data.session);
+
+  if (initial.data.session) {
+    addStep(proofLog, 'info', 'SESSION RESTORED', 'from localStorage',
+            'you were already signed in from a previous visit');
+  }
+
+  /* ------------------------------------------------------- sign in */
+  $('signInBtn').addEventListener('click', async function () {
+    clearError();
+    const btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Signing in…';
+
+    try {
+      const email    = $('email').value.trim();
+      const password = $('password').value;
+
+      if (!email || !password) {
+        showError({ message: 'Enter both an email and a password.', code: '' });
+        return;
+      }
+
+      const { data, error } = await db.auth.signInWithPassword({ email: email, password: password });
+
+      if (error) { showError(error); addStep(proofLog, 'fail', 'SIGN IN', email, error.message); return; }
+
+      renderSession(data.session);
+      addStep(proofLog, 'ok', 'SIGN IN', data.session.user.email,
+              'got a JWT with role = ' + (decodeJwt(data.session.access_token).payload.role));
+
+    } catch (e) {
+      showError(e);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Sign in';
+    }
+  });
+
+  /* allow Enter in either field */
+  ['email', 'password'].forEach(function (id) {
+    $(id).addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') $('signInBtn').click();
+    });
+  });
+
+  /* ------------------------------------------------------ sign out */
+  $('signOutBtn').addEventListener('click', async function () {
+    await db.auth.signOut();
+    addStep(proofLog, 'info', 'SIGN OUT', 'token discarded',
+            'the stored session is gone — the next insert will be anonymous again');
+  });
+
+  /* --------------------------------------------- force a token refresh */
+  $('refreshBtn').addEventListener('click', async function () {
+    const before = (await db.auth.getSession()).data.session;
+    const { data, error } = await db.auth.refreshSession();
+
+    if (error) {
+      addStep(proofLog, 'fail', 'REFRESH', 'get a new access token', error.message);
+      return;
+    }
+
+    const changed = before && data.session.access_token !== before.access_token;
+    addStep(proofLog, 'ok', 'REFRESH', 'get a new access token',
+            changed ? 'the access token changed; expiry pushed back to 1 hour'
+                    : 'token unchanged (it was still fresh)');
+    renderSession(data.session);
+  });
+
+  /* ======================================================================
+     The proof: insert while signed out vs signed in
+     ====================================================================== */
+  $('insertBtn').addEventListener('click', async function () {
+    const btn = this;
+    btn.disabled = true;
+
+    try {
+      const { data: sessionData } = await db.auth.getSession();
+      const role = sessionData.session
+        ? decodeJwt(sessionData.session.access_token).payload.role
+        : 'anon';
+
+      const { data, error } = await db
+        .from(TABLE)
+        .insert({ species: TEST_SPECIES, island: 'inserted from page 3', year: 1900 })
+        .select();
+
+      if (error) {
+        addStep(proofLog, error.code === '42501' ? 'blocked' : 'fail',
+                'INSERT', 'as role: ' + role,
+                error.message + (error.code ? '  [' + error.code + ']' : ''));
+        return;
+      }
+
+      const id = data && data.length ? data[0].id : '?';
+      addStep(proofLog, 'ok', 'INSERT', 'as role: ' + role,
+              'SUCCESS — created row id ' + id + '. This is the policy matching.');
+      addStep(proofLog, 'info', 'REMEMBER', 'cleanup',
+              'there is no delete policy, so this row can only be removed in the SQL Editor');
+
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  $('readBtn').addEventListener('click', async function () {
+    const { count, error } = await db.from(TABLE).select('*', { count: 'exact', head: true });
+    if (error) { addStep(proofLog, 'fail', 'COUNT', 'read ' + TABLE, error.message); return; }
+    addStep(proofLog, 'ok', 'COUNT', 'read ' + TABLE, count + ' rows visible');
+  });
+
+  /* ======================================================================
+     Auth events — the SDK tells you whenever anything changes
+     ====================================================================== */
+  db.auth.onAuthStateChange(function (event, session) {
+    console.log('[page 3] auth event:', event, session ? session.user.email : '(no session)');
+
+    /* Supabase warns against calling other auth methods directly inside this
+       callback, so we defer the DOM update by a tick. */
+    setTimeout(function () { renderSession(session); }, 0);
+
+    const labels = {
+      SIGNED_IN:        'SIGNED_IN',
+      SIGNED_OUT:       'SIGNED_OUT',
+      TOKEN_REFRESHED:  'TOKEN_REFRESHED',
+      USER_UPDATED:     'USER_UPDATED'
+    };
+    if (labels[event]) {
+      addStep(proofLog, 'info', 'EVENT', event,
+              session ? session.user.email : 'session ended');
+    }
+  });
+
+  /* ------------------------------------------------- copy token button */
+  $('copyTokenBtn').addEventListener('click', function () {
+    const btn = this;
+    const text = $('rawToken').textContent;
+
+    const done = function () {
+      btn.textContent = 'Copied';
+      setTimeout(function () { btn.textContent = 'Copy token'; }, 1500);
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); done(); } catch (e) {}
+        document.body.removeChild(ta);
+      });
+    }
+  });
+
+  /* ------------------------------------------------- copy code buttons */
+  document.querySelectorAll('pre').forEach(function (pre) {
+    if (pre.closest('.jwtbody')) return;   /* skip the JWT parts */
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.type = 'button';
+    btn.textContent = 'Copy';
+
+    btn.addEventListener('click', function () {
+      const code = pre.querySelector('code');
+      const text = code ? code.innerText : pre.innerText;
+      const done = function () {
+        btn.textContent = 'Copied';
+        btn.classList.add('done');
+        setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1500);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () {
+          const ta = document.createElement('textarea');
+          ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+          document.body.appendChild(ta); ta.select();
+          try { document.execCommand('copy'); done(); } catch (e) {}
+          document.body.removeChild(ta);
+        });
+      }
+    });
+
+    pre.appendChild(btn);
+  });
+
+  console.log('[page 3] login page ready');
+})();
+</script>
+</body>
+</html>

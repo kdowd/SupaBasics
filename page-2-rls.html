@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page 2 — RLS off vs RLS on · Supabase Auth Workshop</title>
+
+<style>
+  /* ======================================================================
+     DESIGN TOKENS — identical to page 1
+     ====================================================================== */
+  :root {
+    --bg:      #0e1016;
+    --panel:   #161922;
+    --panel-2: #1d212c;
+    --border:  #272c38;
+
+    --text:  #e7e9ef;
+    --muted: #969db0;
+
+    --accent: #3ecf8e;
+    --blue:   #7cc4ff;
+
+    --warn:   #ffc457;
+    --danger: #ff7b7b;
+
+    --radius: 12px;
+    --measure: 780px;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 420px;
+    background: radial-gradient(60% 100% at 50% 0%, rgba(62, 207, 142, .10), transparent 70%);
+    pointer-events: none;
+  }
+
+  .wrap {
+    position: relative;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 56px 24px 96px;
+  }
+
+  .prose { max-width: var(--measure); }
+
+  /* ---------------------------------------------------------------- type */
+  h1, h2, h3 { letter-spacing: -0.5px; line-height: 1.2; margin: 0; }
+  h1 { font-size: clamp(30px, 5vw, 44px); letter-spacing: -1.2px; font-weight: 800; }
+  h2 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+  h3 { font-size: 17px; font-weight: 650; letter-spacing: -0.2px; }
+
+  p { margin: 0 0 14px; color: var(--text); }
+  .lede { font-size: 18px; color: var(--muted); margin-top: 14px; }
+
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .accent { color: var(--accent); }
+
+  code, .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13.5px;
+  }
+  p code, li code, td code, .prose code {
+    color: var(--accent);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1px 6px;
+    white-space: nowrap;
+  }
+
+  /* ------------------------------------------------------------ structure */
+  section { margin-top: 56px; }
+  .sec-label {
+    font-size: 12px; font-weight: 700; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
+  }
+  .rule { height: 1px; background: var(--border); border: 0; margin: 56px 0; }
+
+  /* ---------------------------------------------------------------- hero */
+  .kicker {
+    display: inline-block;
+    font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--accent);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 14px;
+    margin-bottom: 22px;
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px 24px;
+  }
+
+  /* ------------------------------------------------------------ callouts */
+  .note, .warn, .danger {
+    border-radius: 12px; padding: 16px 18px; margin: 20px 0;
+    max-width: var(--measure);
+  }
+  .note   { background: #131c26; border: 1px solid #24405a; }
+  .warn   { background: #241d0f; border: 1px solid #4a3a1a; }
+  .danger { background: #241416; border: 1px solid #5a262a; }
+  .note   strong { color: var(--blue); }
+  .warn   strong { color: var(--warn); }
+  .danger strong { color: var(--danger); }
+  .note p:last-child, .warn p:last-child, .danger p:last-child { margin-bottom: 0; }
+
+  /* --------------------------------------------------------------- pills */
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 11.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    border-radius: 999px; padding: 5px 12px;
+    border: 1px solid var(--border); background: var(--panel-2); color: var(--muted);
+  }
+  .pill.ok   { color: var(--accent); border-color: #245039; background: #10231a; }
+  .pill.bad  { color: var(--danger); border-color: #5a262a; background: #241416; }
+  .pill.load { color: var(--warn);   border-color: #4a3a1a; background: #241d0f; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+
+  /* -------------------------------------------------------------- buttons */
+  .btn {
+    font: 600 14px/1 ui-sans-serif, system-ui, -apple-system, sans-serif;
+    border-radius: 9px; padding: 11px 15px;
+    border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--text);
+    cursor: pointer;
+    transition: border-color .15s, color .15s, background .15s;
+  }
+  .btn:hover:not(:disabled) { border-color: #3a4152; }
+  .btn.primary {
+    background: var(--accent); color: #06231a; border-color: var(--accent); font-weight: 700;
+  }
+  .btn.primary:hover:not(:disabled) { background: #4bd99a; }
+  .btn.ghost { background: transparent; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  .btnrow { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0 4px; }
+
+  /* ------------------------------------------------------ comparison grid */
+  .grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 20px;
+    align-items: start;
+  }
+  @media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
+
+  .cmp {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .cmp.off { border-color: #4a3a1a; }
+  .cmp.on  { border-color: #245039; }
+
+  .cmphead { padding: 18px 20px 16px; border-bottom: 1px solid var(--border); }
+  .cmphead .tname {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 15px; font-weight: 600; margin-bottom: 8px;
+  }
+  .cmphead .tnote { font-size: 13.5px; color: var(--muted); margin-top: 10px; }
+
+  .cmpbody { padding: 16px 20px 20px; }
+
+  .readout {
+    font-size: 13.5px; color: var(--muted);
+    padding: 10px 12px; border-radius: 10px;
+    background: var(--panel-2); border: 1px solid var(--border);
+  }
+  .readout b { color: var(--text); }
+  .readout.errtxt { color: var(--danger); }
+
+  /* ------------------------------------------------------------------ log */
+  .log { margin-top: 14px; }
+  .log:empty::after {
+    content: "No tests run yet.";
+    display: block; padding: 10px 0; color: var(--muted); font-size: 13.5px;
+  }
+
+  .lstep {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .lstep:last-child { border-bottom: 0; }
+
+  .mark { flex: none; width: 16px; text-align: center; font-weight: 800; font-size: 13px; line-height: 1.5; }
+  .mark.ok      { color: var(--accent); }
+  .mark.blocked { color: var(--warn); }
+  .mark.fail    { color: var(--danger); }
+  .mark.skipped { color: var(--muted); }
+  .mark.info    { color: var(--blue); }
+
+  .lbody { min-width: 0; flex: 1; }
+  .lop {
+    font-size: 13.5px; font-weight: 650;
+  }
+  .ltarget { color: var(--muted); font-weight: 400; }
+  .ldetail {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12.5px; color: var(--muted); margin-top: 2px;
+    word-break: break-word;
+  }
+  .ldetail.ok      { color: var(--accent); }
+  .ldetail.blocked { color: var(--warn); }
+  .ldetail.fail    { color: var(--danger); }
+
+  /* --------------------------------------------------------- summary table */
+  .sumtable { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 18px; }
+  .sumtable th {
+    background: var(--panel-2); color: var(--muted);
+    font-size: 11.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border);
+  }
+  .sumtable td {
+    padding: 11px 16px; border-bottom: 1px solid var(--border);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px;
+  }
+  .sumtable tbody tr:nth-child(even) { background: var(--panel-2); }
+  .sumtable tbody tr:last-child td { border-bottom: 0; }
+  .sumtable td:first-child {
+    font-family: inherit; font-weight: 650; font-size: 13.5px; color: var(--text);
+  }
+  .sumtable .ok      { color: var(--accent); }
+  .sumtable .blocked { color: var(--warn); }
+  .sumtable .fail    { color: var(--danger); }
+  .sumtable .idle    { color: var(--muted); }
+
+  .sumwrap {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden; margin-top: 18px;
+  }
+  .sumtable { margin-top: 0; }
+
+  /* ---------------------------------------------------------- code blocks */
+  pre {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    margin: 14px 0;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  pre code { color: var(--text); white-space: pre; }
+
+  .tok-key { color: var(--blue); }
+  .tok-str { color: var(--accent); }
+  .tok-com { color: var(--muted); }
+
+  .copy-btn {
+    position: absolute; top: 10px; right: 10px;
+    font: 600 11.5px/1 ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: .06em; text-transform: uppercase;
+    color: var(--muted); background: var(--panel-2);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 7px 10px; cursor: pointer;
+    transition: color .15s, border-color .15s;
+  }
+  .copy-btn:hover { color: var(--text); border-color: #3a4152; }
+  .copy-btn.done { color: var(--accent); border-color: #245039; }
+
+  .step { display: flex; gap: 16px; margin: 30px 0; }
+  .step .num {
+    flex: 0 0 34px; height: 34px; border-radius: 50%;
+    background: var(--accent); color: #06231a;
+    display: flex; align-items: center; justify-content: center; font-weight: 800;
+  }
+  .step .body { min-width: 0; flex: 1; }
+  .step .body p:last-child { margin-bottom: 0; }
+
+  .nextnav {
+    display: flex; flex-wrap: wrap; gap: 14px;
+    align-items: center; justify-content: space-between;
+    margin-top: 20px;
+  }
+  footer {
+    margin-top: 64px; padding-top: 22px;
+    border-top: 1px solid var(--border);
+    color: var(--muted); font-size: 13.5px;
+  }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 36px 16px 72px; }
+    .card, .cmphead, .cmpbody { padding-left: 16px; padding-right: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ==================================================== HERO -->
+  <header class="prose">
+    <div class="kicker">Supabase Auth · Page 2 of 5</div>
+    <h1>Two doors, <span class="accent">exactly the same data</span></h1>
+    <p class="lede">
+      On page 1 we read a table that had no security at all. Now we run the same
+      requests against two versions of that table — one still unlocked, one with
+      Row Level Security switched on — and watch what changes.
+    </p>
+  </header>
+
+  <div class="prose">
+    <div class="note">
+      <p>
+        <strong>The one idea on this page:</strong> switching RLS on does
+        <em>not</em> mean “nobody can read my data”. RLS decides which
+        <em>rows</em> each operation may touch, and it is your policies that
+        decide. Get the policy right and the public data stays public while the
+        write access disappears completely.
+      </p>
+    </div>
+  </div>
+
+  <!-- ============================================ SETUP STATUS -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">Before we start</div>
+      <h2>Is the comparison ready?</h2>
+    </div>
+
+    <div class="card" style="margin-top:18px;">
+      <span id="setupPill" class="pill load"><span class="dot"></span> Checking tables…</span>
+      <div id="setupText" style="margin-top:14px;color:var(--muted);font-size:14.5px;">
+        Looking for <code>penguins</code> and the secured copy…
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================ WRITE SAFETY WARNING -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">Read this first</div>
+      <h2>The write test really does write</h2>
+    </div>
+
+    <div class="prose">
+      <div class="danger">
+        <p>
+          <strong>On the left-hand table, these tests really do modify your database.</strong>
+          The whole point is to prove that a stranger with the publishable key can
+          change your data — so the page has to actually change it.
+        </p>
+        <p style="margin-top:10px;">
+          Every write to the real <code>penguins</code> table is marked with the
+          species <code>__PROBE__</code> and is deleted again immediately after the
+          test. The page also carries a <strong>Clean up now</strong> button, checks
+          for leftovers every time it loads, and tries an emergency clean-up if you
+          close the tab mid-test. Nothing this page does can delete or change a real
+          penguin row.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================ COMPARISON -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">The comparison</div>
+      <h2>Run the same four operations on both tables</h2>
+      <p>
+        Each button runs an identical sequence — read, insert, update, delete —
+        against one table, and reports what actually came back. Run the left one
+        first, then the right one, and compare.
+      </p>
+    </div>
+
+    <div class="grid2">
+
+      <!-- ------------------------------------------------ RLS OFF -->
+      <div class="cmp off">
+        <div class="cmphead">
+          <span class="pill bad"><span class="dot"></span> RLS off</span>
+          <div class="tname" style="margin-top:12px;">penguins</div>
+          <div class="tnote">
+            No policies at all, because there is nothing to enforce them. Anyone
+            holding the publishable key has full read <em>and</em> write access.
+          </div>
+        </div>
+        <div class="cmpbody">
+          <div class="readout" id="read-penguins">Not tested yet.</div>
+          <div class="btnrow">
+            <button class="btn primary" id="btn-penguins" type="button" disabled>Run the write test</button>
+            <button class="btn ghost" id="clean-penguins" type="button" disabled>Clean up now</button>
+          </div>
+          <div class="log" id="log-penguins"></div>
+        </div>
+      </div>
+
+      <!-- ------------------------------------------------ RLS ON -->
+      <div class="cmp on">
+        <div class="cmphead">
+          <span class="pill ok"><span class="dot"></span> RLS on</span>
+          <div class="tname" id="name-secure" style="margin-top:12px;">penguins_rls_on</div>
+          <div class="tnote">
+            One permissive policy: <code>for select to anon</code> using
+            <code>true</code>. Reads are open on purpose. Insert, update and
+            delete have no policy, so Postgres denies them by default.
+          </div>
+        </div>
+        <div class="cmpbody">
+          <div class="readout" id="read-penguins_secure">Not tested yet.</div>
+          <div class="btnrow">
+            <button class="btn primary" id="btn-penguins_secure" type="button" disabled>Run the write test</button>
+            <button class="btn ghost" id="clean-penguins_secure" type="button" disabled>Clean up now</button>
+          </div>
+          <div class="log" id="log-penguins_secure"></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============================================ SUMMARY -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">Side by side</div>
+      <h2>The results table</h2>
+      <p>This fills in as you run the tests above.</p>
+    </div>
+
+    <div class="sumwrap">
+      <table class="sumtable">
+        <thead>
+          <tr>
+            <th>Operation</th>
+            <th>penguins (RLS off)</th>
+            <th><span class="secure-name">penguins_rls_on</span> (RLS on)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Read all rows</td>
+            <td id="sum-penguins-read"        class="idle">—</td>
+            <td id="sum-penguins_secure-read" class="idle">—</td>
+          </tr>
+          <tr>
+            <td>Insert a row</td>
+            <td id="sum-penguins-insert"        class="idle">—</td>
+            <td id="sum-penguins_secure-insert" class="idle">—</td>
+          </tr>
+          <tr>
+            <td>Update a row</td>
+            <td id="sum-penguins-update"        class="idle">—</td>
+            <td id="sum-penguins_secure-update" class="idle">—</td>
+          </tr>
+          <tr>
+            <td>Delete a row</td>
+            <td id="sum-penguins-delete"        class="idle">—</td>
+            <td id="sum-penguins_secure-delete" class="idle">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <!-- ============================================ WHAT JUST HAPPENED -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">Under the hood</div>
+      <h2>Three things to notice</h2>
+    </div>
+
+    <div class="step">
+      <div class="num">1</div>
+      <div class="body">
+        <h3>RLS on did not break reading</h3>
+        <p>
+          Both tables returned the same number of rows. The policy
+          <code>for select using (true)</code> says <em>“every row is readable by
+          everyone”</em> — which is exactly what it did. If you had enabled RLS and
+          written no policy at all, the same query would have returned
+          <strong>zero rows and no error</strong>. That silence is what makes RLS so
+          easy to get wrong at first.
+        </p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">2</div>
+      <div class="body">
+        <h3>Insert shouts. Update and delete whisper.</h3>
+        <p>
+          A blocked <code>INSERT</code> fails loudly — “new row violates row-level
+          security policy” — and you get an error you can catch. But a blocked
+          <code>UPDATE</code> or <code>DELETE</code> simply matches
+          <strong>zero rows</strong> and reports success. There is no exception.
+          This is why “my update runs but nothing changes” is one of the most common
+          RLS bugs in the wild.
+        </p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">3</div>
+      <div class="body">
+        <h3>You never wrote a rule that forbids anything</h3>
+        <p>
+          Look back at the SQL: there is one policy, and it only ever
+          <em>grants</em> reading. Writing is blocked not because we banned it, but
+          because we never permitted it. RLS starts from <strong>deny</strong> and
+          you add access one policy at a time — which is the opposite of how most
+          people assume security works.
+        </p>
+      </div>
+    </div>
+
+    <div class="prose">
+      <div class="note">
+        <p>
+          <strong>Where this is going.</strong> A policy you write can be
+          <em>permissive</em> or <em>restrictive</em>, and those words describe how
+          policies <strong>combine</strong>, not how strict they are — multiple
+          permissive policies are OR-ed together, and restrictive ones are AND-ed on
+          top. That distinction matters on page 4, when we start asking
+          <code>auth.uid()</code> who is actually logged in.
+        </p>
+      </div>
+
+      <div class="warn">
+        <p>
+          <strong>Grants and policies are two different gates.</strong> A policy
+          cannot give access that a <em>grant</em> withholds, and a grant cannot get
+          you past a policy. This page also runs
+          <code>grant select, insert, update, delete … to anon</code>, so on
+          <code><span class="secure-name">penguins_rls_on</span></code> the grant permits writing and the
+          <em>policy</em> is what refuses it. If the grant were missing you would get
+          error <code>42501</code> instead. Worth knowing which gate you are hitting.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================ THE SQL -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">Reference</div>
+      <h2>What the setup script actually did</h2>
+      <p>
+        The three lines that matter. The full script, including the disposable table
+        copy, is in <code>setup-page2.sql</code>.
+      </p>
+    </div>
+
+    <pre><code><span class="tok-com">-- Two separate gates: FIRST the grant, THEN the policy.</span>
+<span class="tok-key">grant</span> select, insert, update, delete
+  <span class="tok-key">on</span> public.penguins_rls_on <span class="tok-key">to</span> anon, authenticated;
+
+<span class="tok-com">-- Every table starts closed.</span>
+<span class="tok-key">alter table</span> public.penguins_rls_on <span class="tok-key">enable row level security</span>;
+
+<span class="tok-com">-- ONE permissive policy, granting reading to everyone.</span>
+<span class="tok-com">-- Permissive policies are OR-ed together, so they can only widen access.</span>
+<span class="tok-key">create policy</span> <span class="tok-str">"Penguins are readable by everyone"</span>
+  <span class="tok-key">on</span> public.penguins_rls_on
+  <span class="tok-key">for select to</span> anon, authenticated
+  <span class="tok-key">using</span> ( <span class="tok-key">true</span> );
+
+<span class="tok-com">-- And deliberately nothing for insert / update / delete.</span>
+<span class="tok-com">-- No permissive policy for an operation = Postgres denies it.</span></code></pre>
+
+    <div class="prose">
+      <div class="note">
+        <p>
+          <strong>Why the page can't show you the policy list.</strong> The REST API
+          exposes tables and functions — not Postgres system catalogs like
+          <code>pg_policies</code>. So this page proves the difference
+          <em>behaviourally</em> instead of reading the config. To see the policies
+          themselves, run the verification queries at the bottom of
+          <code>setup-page2.sql</code> in the SQL Editor; the
+          <code>permissive</code> column there is the OR/AND distinction in the
+          catalog.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================ NEXT -->
+  <section>
+    <div class="prose">
+      <div class="sec-label">Next</div>
+      <h2>Where we go from here</h2>
+      <p>
+        We can now lock a table down. But <code><span class="secure-name">penguins_rls_on</span></code> is still
+        all-or-nothing: either everyone reads everything, or nobody reads anything.
+        Page 3 gives the browser an actual identity to work with — signing users up
+        and logging them in — so that policies can finally say
+        <em>“you”</em> instead of <em>“everyone”</em>.
+      </p>
+
+      <div class="nextnav">
+        <a class="pill" href="index.html">← Page 1 · Read data (RLS off)</a>
+        <a class="pill" href="page-3-login.html">Page 3 · Logging in (JWT) →</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p style="margin:0;">
+      Supabase Auth workshop · page 2 of 5 · project
+      <span class="mono" style="color:var(--muted)">decwucuwqnzrxzbxxifu</span>
+    </p>
+  </footer>
+
+</div>
+
+<!-- ==========================================================================
+     SCRIPTS — SDK first, then shared config, then this page.
+     ========================================================================== -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
+<script src="supabase-config.js"></script>
+
+<script>
+(async function () {
+  'use strict';
+
+  /* ======================================================================
+     THE SAFETY RULES FOR THIS PAGE
+     ----------------------------------------------------------------------
+     We are deliberately writing to a real table, so these are not optional:
+
+       1. Every row this page creates is tagged with the species __PROBE__.
+       2. Every UPDATE and DELETE on the real `penguins` table carries a
+          filter for that tag. There is no code path that writes to
+          `penguins` without it — assertProbeScoped() enforces it.
+       3. The secured table is a disposable copy, so it is fair game.
+     ====================================================================== */
+
+  const PROBE_SPECIES = '__PROBE__';
+
+  const PROBE_PAYLOAD = {
+    species: PROBE_SPECIES,
+    island:  'written from the browser',
+    year:    1900
+  };
+
+  /* The name of the secured comparison table.
+     Yours may be called something else — the page uses the first name in this
+     list that actually exists, so add your own name here if you rebuild it. */
+  const SECURE_CANDIDATES = ['penguins_rls_on', 'penguins_secure'];
+
+  const TABLES = [
+    { id: 'penguins',        name: 'penguins',        rls: false, disposable: false },
+    { id: 'penguins_secure', name: SECURE_CANDIDATES[0], rls: true, disposable: true }
+  ];
+
+  /* Probe rows we created and have not yet deleted. */
+  const outstanding = new Set();
+
+  /* Hard guard: refuse any write to the real table that is not scoped to
+     our sentinel species. If someone later edits this page and forgets the
+     filter, this throws instead of wiping a table. */
+  function assertProbeScoped(tableName, filterColumn, filterValue) {
+    if (tableName === 'penguins' &&
+        !(filterColumn === 'species' && filterValue === PROBE_SPECIES)) {
+      throw new Error(
+        'Refused: a write to the real penguins table was not scoped to ' + PROBE_SPECIES
+      );
+    }
+  }
+
+  /* ======================================================================
+     DOM helpers
+     ====================================================================== */
+  const $ = function (id) { return document.getElementById(id); };
+
+  function addStep(logEl, kind, op, target, detail) {
+    const marks = { ok: '✓', blocked: '⛔', fail: '✕', skipped: '–', info: '•' };
+
+    const row = document.createElement('div');
+    row.className = 'lstep';
+
+    const mark = document.createElement('div');
+    mark.className = 'mark ' + kind;
+    mark.textContent = marks[kind] || '•';
+
+    const body = document.createElement('div');
+    body.className = 'lbody';
+
+    const opEl = document.createElement('div');
+    opEl.className = 'lop';
+    opEl.textContent = op;
+
+    if (target) {
+      const t = document.createElement('span');
+      t.className = 'ltarget';
+      t.textContent = ' · ' + target;
+      opEl.appendChild(t);
+    }
+
+    const det = document.createElement('div');
+    det.className = 'ldetail ' + kind;
+    det.textContent = detail;
+
+    body.appendChild(opEl);
+    body.appendChild(det);
+    row.appendChild(mark);
+    row.appendChild(body);
+    logEl.appendChild(row);
+  }
+
+  function setSummary(tableId, op, text, kind) {
+    const el = $('sum-' + tableId + '-' + op);
+    if (!el) return;
+    el.textContent = text;
+    el.className = kind;
+  }
+
+  function setReadout(tableId, html, isError) {
+    const el = $('read-' + tableId);
+    el.className = 'readout' + (isError ? ' errtxt' : '');
+    el.innerHTML = html;
+  }
+
+  /* ======================================================================
+     1. Does each table exist? (this is also our setup check)
+     ====================================================================== */
+  async function checkTable(t) {
+    const { count, error } = await db
+      .from(t.name)
+      .select('*', { count: 'exact', head: true });
+
+    if (error) return { exists: false, error: error };
+    return { exists: true, count: count };
+  }
+
+  const state = {};
+
+  /* ---------------------------------------------------------------
+     Which secured table does this project actually have? Look for each
+     candidate name in turn and adopt the first one that exists, so the
+     page keeps working if you rebuild the table under a different name.
+     --------------------------------------------------------------- */
+  const secureMeta = TABLES.find(function (t) { return t.id === 'penguins_secure'; });
+
+  for (const candidate of SECURE_CANDIDATES) {
+    const probe = await checkTable({ name: candidate });
+    if (probe.exists) { secureMeta.name = candidate; break; }
+  }
+
+  const SECURE_NAME = secureMeta.name;
+
+  /* Show the real name everywhere it appears in the page text. */
+  document.querySelectorAll('.secure-name').forEach(function (el) {
+    el.textContent = SECURE_NAME;
+  });
+  if ($('name-secure')) $('name-secure').textContent = SECURE_NAME;
+
+  for (const t of TABLES) {
+    const res = await checkTable(t);
+    state[t.id] = res;
+
+    if (res.exists) {
+      if (res.count === 0) {
+        setReadout(t.id, '<b>' + t.name + '</b> responded, but holds <b>0 rows</b> — see the note at the top.');
+      } else {
+        setReadout(t.id, 'Ready — <b>' + res.count + '</b> rows in <b>' + t.name + '</b>.');
+      }
+      $('btn-' + t.id).disabled = false;
+      $('clean-' + t.id).disabled = false;
+    } else {
+      setReadout(
+        t.id,
+        'Table not found. Run <b>setup-page2.sql</b> in the Supabase SQL Editor, then reload.',
+        true
+      );
+      $('btn-' + t.id).disabled = true;
+      $('clean-' + t.id).disabled = true;
+    }
+  }
+
+  /* ------------------------------------------------------ the setup banner */
+  const setupPill = $('setupPill');
+  const setupText = $('setupText');
+
+  const secureState = state['penguins_secure'];
+
+  if (state['penguins'].exists && secureState.exists && secureState.count > 0) {
+    setupPill.className = 'pill ok';
+    setupPill.innerHTML = '<span class="dot"></span> Ready';
+    setupText.innerHTML =
+      'Both tables found. <b>penguins</b> has RLS off, <b>' + SECURE_NAME +
+      '</b> has RLS on with a public read policy. Run the tests below.';
+
+  } else if (state['penguins'].exists && secureState.exists && secureState.count === 0) {
+    /* Worth calling out explicitly: an empty secured table cannot tell you
+       whether your read policy works. "Allowed but there is nothing" and
+       "blocked completely" look identical from the browser. */
+    setupPill.className = 'pill load';
+    setupPill.innerHTML = '<span class="dot"></span> Empty table';
+    setupText.innerHTML =
+      '<b>' + SECURE_NAME + ' exists, but holds 0 rows.</b> Reading it will succeed ' +
+      'and return nothing — which looks exactly the same as a policy that blocks ' +
+      'everything. Re-run <b>setup-page2.sql</b> to fill it with a copy of the penguin ' +
+      'data, so that the comparison actually means something.';
+
+  } else if (state['penguins'].exists) {
+    setupPill.className = 'pill bad';
+    setupPill.innerHTML = '<span class="dot"></span> Not set up';
+
+    setupText.innerHTML =
+      '<b>No secured table found.</b> Looked for: <code>' +
+      SECURE_CANDIDATES.join('</code>, <code>') + '</code>. The left-hand table still ' +
+      'works, but there is nothing to compare it against. Run <b>setup-page2.sql</b> in ' +
+      'the Supabase SQL Editor (it does not touch the original penguins table), then ' +
+      'reload this page.';
+
+    /* Build the "not set up" hint safely, as DOM nodes. */
+    const box = document.createElement('div');
+    box.className = 'warn';
+
+    const p1 = document.createElement('p');
+    const s1 = document.createElement('strong');
+    s1.textContent = 'If you have just run the script and still see this, ';
+    p1.appendChild(s1);
+    p1.appendChild(document.createTextNode(
+      'the API has not noticed the new table yet. Uncomment the last line in ' +
+      'setup-page2.sql and run it once:'
+    ));
+
+    const pre = document.createElement('pre');
+    pre.style.margin = '12px 0 0';
+    const code = document.createElement('code');
+    code.textContent = "notify pgrst, 'reload schema';";
+    pre.appendChild(code);
+
+    box.appendChild(p1);
+    box.appendChild(pre);
+    setupText.parentNode.insertBefore(box, setupText.nextSibling);
+
+  } else {
+    setupPill.className = 'pill bad';
+    setupPill.innerHTML = '<span class="dot"></span> Missing table';
+    setupText.innerHTML =
+      'Even the <b>penguins</b> table could not be read. Check your settings in ' +
+      '<code>supabase-config.js</code> and your internet connection.';
+  }
+
+  /* ------------------------- look for leftover probe rows from a past run */
+  async function findLeftovers() {
+    const { count, error } = await db
+      .from('penguins')
+      .select('*', { count: 'exact', head: true })
+      .eq('species', PROBE_SPECIES);
+    return error ? null : count;
+  }
+
+  async function reportLeftovers() {
+    const n = await findLeftovers();
+    if (n === null || n === 0) return;
+
+    const p = document.createElement('p');
+    p.style.margin = '12px 0 0';
+    p.style.color = 'var(--warn)';
+    p.textContent =
+      'Heads up: ' + n + ' leftover __PROBE__ row(s) found from an earlier session. ' +
+      'Press "Clean up now" on the left to remove them.';
+
+    setupText.parentNode.insertBefore(p, setupText.nextSibling);
+  }
+
+  await reportLeftovers();
+
+  /* ======================================================================
+     2. The clean-up routine
+     ====================================================================== */
+  /* Delete every probe row in the real table. Scoped by definition. */
+  async function cleanupTable(t, logEl, quiet) {
+    assertProbeScoped(t.name, 'species', PROBE_SPECIES);
+
+    const { data, error } = await db
+      .from(t.name)
+      .delete()
+      .eq('species', PROBE_SPECIES)
+      .select();
+
+    if (logEl) {
+      if (error) {
+        addStep(logEl, 'fail', 'CLEAN UP', 'remove __PROBE__ rows', error.message);
+      } else {
+        const n = data ? data.length : 0;
+        addStep(
+          logEl,
+          n > 0 ? 'ok' : 'info',
+          'CLEAN UP',
+          'remove __PROBE__ rows',
+          n > 0 ? 'removed ' + n + ' leftover row(s)' : 'nothing to remove'
+        );
+      }
+    }
+    outstanding.clear();
+    return error ? null : (data ? data.length : 0);
+  }
+
+  /* ======================================================================
+     3. The four-operation test
+     ====================================================================== */
+  async function runTest(t) {
+    const logEl = $('log-' + t.id);
+    const btn = $('btn-' + t.id);
+
+    logEl.textContent = '';
+    btn.disabled = true;
+
+    try {
+      /* ---------------------------------------------------- READ ------- */
+      const read = await db.from(t.name).select('*', { count: 'exact', head: true });
+
+      if (read.error) {
+        addStep(logEl, 'fail', 'READ', 'select all rows', read.error.message);
+        setSummary(t.id, 'read', 'failed', 'fail');
+      } else {
+        addStep(logEl, 'ok', 'READ', 'select all rows',
+                 'returned ' + read.count + ' rows');
+        setSummary(t.id, 'read', read.count + ' rows', 'ok');
+        setReadout(t.id, read.count === 0
+          ? '<b>' + t.name + '</b> responded, but holds <b>0 rows</b> — see the note at the top.'
+          : 'Ready — <b>' + read.count + '</b> rows in <b>' + t.name + '</b>.');
+
+        state[t.id].count = read.count;
+      }
+
+      /* ---------------------------------------------------- INSERT ----- */
+      let createdId = null;
+
+      const ins = await db.from(t.name).insert(PROBE_PAYLOAD).select();
+
+      if (ins.error) {
+        addStep(logEl, 'blocked', 'INSERT', 'add a row', ins.error.message +
+                 (ins.error.code ? '  [' + ins.error.code + ']' : ''));
+        setSummary(t.id, 'insert', 'blocked', 'blocked');
+      } else {
+        createdId = ins.data && ins.data.length ? ins.data[0].id : null;
+        if (createdId !== null) outstanding.add(t.name + ':' + createdId);
+
+        addStep(logEl, 'ok', 'INSERT', 'add a row',
+                 'created row id ' + createdId + ' — it really is in the table now');
+        setSummary(t.id, 'insert', 'created row ' + createdId, 'ok');
+      }
+
+      /* ---------------------------------------------------- UPDATE ----- */
+      if (t.disposable) {
+        /* A throwaway copy, so we can safely aim at a row that already
+           exists and see whether RLS lets the change through. */
+        const upd = await db
+          .from(t.name)
+          .update({ island: 'changed from the browser' })
+          .eq('id', 1)
+          .select();
+
+        if (upd.error) {
+          addStep(logEl, 'fail', 'UPDATE', 'change existing row id 1', upd.error.message);
+          setSummary(t.id, 'update', 'error', 'fail');
+        } else {
+          const n = upd.data ? upd.data.length : 0;
+          addStep(logEl, n > 0 ? 'ok' : 'blocked', 'UPDATE', 'change existing row id 1',
+                  n > 0 ? n + ' row changed' : '0 rows changed — and no error at all');
+          setSummary(t.id, 'update', n > 0 ? n + ' row changed' : '0 rows (silent)', n > 0 ? 'ok' : 'blocked');
+        }
+      } else if (createdId !== null) {
+        /* The real table: only ever our own probe row. */
+        assertProbeScoped(t.name, 'species', PROBE_SPECIES);
+
+        const upd = await db
+          .from(t.name)
+          .update({ island: 'changed from the browser' })
+          .eq('id', createdId)
+          .eq('species', PROBE_SPECIES)
+          .select();
+
+        if (upd.error) {
+          addStep(logEl, 'fail', 'UPDATE', 'change probe row id ' + createdId, upd.error.message);
+          setSummary(t.id, 'update', 'error', 'fail');
+        } else {
+          const n = upd.data ? upd.data.length : 0;
+          addStep(logEl, n > 0 ? 'ok' : 'blocked', 'UPDATE', 'change probe row id ' + createdId,
+                  n > 0 ? n + ' row changed' : '0 rows changed');
+          setSummary(t.id, 'update', n + ' row changed', n > 0 ? 'ok' : 'blocked');
+        }
+      } else {
+        addStep(logEl, 'skipped', 'UPDATE', 'change the row we just made',
+                 'skipped — the insert never succeeded, so there is no row to change');
+        setSummary(t.id, 'update', 'not reached', 'blocked');
+      }
+
+      /* ---------------------------------------------------- DELETE ----- */
+      if (t.disposable) {
+        /* Aiming at a row that exists, on a table we are allowed to wreck. */
+        const del = await db.from(t.name).delete().eq('id', 1).select();
+
+        if (del.error) {
+          addStep(logEl, 'fail', 'DELETE', 'remove existing row id 1', del.error.message);
+          setSummary(t.id, 'delete', 'error', 'fail');
+        } else {
+          const n = del.data ? del.data.length : 0;
+          addStep(logEl, n > 0 ? 'ok' : 'blocked', 'DELETE', 'remove existing row id 1',
+                  n > 0 ? n + ' row deleted' : '0 rows deleted — and again, no error');
+          setSummary(t.id, 'delete', n > 0 ? n + ' row deleted' : '0 rows (silent)', n > 0 ? 'ok' : 'blocked');
+        }
+      } else if (createdId !== null) {
+        /* Clean-up doubles as the delete test. */
+        assertProbeScoped(t.name, 'species', PROBE_SPECIES);
+
+        const del = await db
+          .from(t.name)
+          .delete()
+          .eq('id', createdId)
+          .eq('species', PROBE_SPECIES)
+          .select();
+
+        if (del.error) {
+          addStep(logEl, 'fail', 'DELETE', 'remove probe row id ' + createdId, del.error.message);
+          setSummary(t.id, 'delete', 'error', 'fail');
+        } else {
+          const n = del.data ? del.data.length : 0;
+          outstanding.delete(t.name + ':' + createdId);
+          addStep(logEl, 'ok', 'DELETE', 'remove probe row id ' + createdId,
+                  n > 0 ? 'deleted ' + n + ' row — table is back to normal' : '0 rows deleted');
+          setSummary(t.id, 'delete', 'deleted row ' + createdId, 'ok');
+        }
+      } else {
+        addStep(logEl, 'skipped', 'DELETE', 'remove the row we made',
+                 'skipped — nothing was inserted, so there is nothing to remove');
+        setSummary(t.id, 'delete', 'not reached', 'blocked');
+      }
+
+      /* ------------------------------- final count, to prove the cleanup */
+      if (!t.disposable) {
+        const before = state[t.id] ? state[t.id].count : null;
+        const after = await db.from(t.name).select('*', { count: 'exact', head: true });
+        if (!after.error) {
+          const same = (typeof before === 'number') && after.count === before;
+          addStep(logEl, same ? 'info' : 'fail', 'FINAL COUNT', 'rows left in ' + t.name,
+                  after.count + ' rows' +
+                  (same
+                    ? ' — identical to the start, so nothing was left behind'
+                    : ' — expected ' + before + '; a probe row may still be present'));
+        }
+      }
+
+    } catch (err) {
+      addStep(logEl, 'fail', 'ABORTED', '', err.message || String(err));
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  /* ======================================================================
+     4. Wire up the buttons
+     ====================================================================== */
+  for (const t of TABLES) {
+    $('btn-' + t.id).addEventListener('click', function () { runTest(t); });
+
+    $('clean-' + t.id).addEventListener('click', async function () {
+      const logEl = $('log-' + t.id);
+      logEl.textContent = '';
+      addStep(logEl, 'info', 'CLEAN UP', 'start', 'asking the database to remove __PROBE__ rows…');
+      await cleanupTable(t, logEl);
+    });
+  }
+
+  /* ======================================================================
+     5. Best-effort clean-up if the tab goes away mid-test
+     ----------------------------------------------------------------------
+     Uses a plain fetch with keepalive, because the SDK is not reliable during
+     page unload. Only ever runs if we know we still owe a delete, and only
+     ever targets the __PROBE__ rows.
+     ====================================================================== */
+  window.addEventListener('pagehide', function () {
+    if (outstanding.size === 0) return;
+
+    try {
+      fetch(
+        window.SUPABASE_URL + '/rest/v1/penguins?species=eq.' +
+          encodeURIComponent(PROBE_SPECIES),
+        {
+          method: 'DELETE',
+          headers: {
+            apikey: window.SUPABASE_PUBLISHABLE_KEY,
+            Authorization: 'Bearer ' + window.SUPABASE_PUBLISHABLE_KEY
+          },
+          keepalive: true
+        }
+      );
+    } catch (e) { /* nothing more we can do while unloading */ }
+  });
+
+  /* ------------------------------------------------- copy code buttons */
+  document.querySelectorAll('pre').forEach(function (pre) {
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.type = 'button';
+    btn.textContent = 'Copy';
+
+    btn.addEventListener('click', function () {
+      const code = pre.querySelector('code');
+      const text = code ? code.innerText : pre.innerText;
+
+      const done = function () {
+        btn.textContent = 'Copied';
+        btn.classList.add('done');
+        setTimeout(function () {
+          btn.textContent = 'Copy';
+          btn.classList.remove('done');
+        }, 1500);
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () { fallback(text, done); });
+      } else {
+        fallback(text, done);
+      }
+    });
+
+    pre.appendChild(btn);
+  });
+
+  function fallback(text, done) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { /* ignore */ }
+    document.body.removeChild(ta);
+  }
+
+  console.log('[page 2] comparison page ready');
+})();
+</script>
+</body>
+</html>

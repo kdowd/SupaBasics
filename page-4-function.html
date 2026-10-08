@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Page 4 — Calling a database function (RPC) · Supabase Workshop</title>
+
+  <style>
+    /* ======================================================================
+     DESIGN TOKENS — identical to pages 1-3
+     ====================================================================== */
+    :root {
+      --bg: #0e1016;
+      --panel: #161922;
+      --panel-2: #1d212c;
+      --border: #272c38;
+
+      --text: #e7e9ef;
+      --muted: #969db0;
+
+      --accent: #3ecf8e;
+      --blue: #7cc4ff;
+
+      --warn: #ffc457;
+      --danger: #ff7b7b;
+
+      --radius: 12px;
+      --measure: 780px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 420px;
+      background: radial-gradient(60% 100% at 50% 0%, rgba(62, 207, 142, .10), transparent 70%);
+      pointer-events: none;
+    }
+
+    .wrap {
+      position: relative;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 56px 24px 96px;
+    }
+
+    .prose {
+      max-width: var(--measure);
+    }
+
+    /* ---------------------------------------------------------------- type */
+    h1,
+    h2,
+    h3 {
+      letter-spacing: -0.5px;
+      line-height: 1.2;
+      margin: 0;
+    }
+
+    h1 {
+      font-size: clamp(30px, 5vw, 44px);
+      letter-spacing: -1.2px;
+      font-weight: 800;
+    }
+
+    h2 {
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    h3 {
+      font-size: 17px;
+      font-weight: 650;
+      letter-spacing: -0.2px;
+    }
+
+    p {
+      margin: 0 0 14px;
+      color: var(--text);
+    }
+
+    .lede {
+      font-size: 18px;
+      color: var(--muted);
+      margin-top: 14px;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .accent {
+      color: var(--accent);
+    }
+
+    code,
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13.5px;
+    }
+
+    p code,
+    li code,
+    td code,
+    .prose code {
+      color: var(--accent);
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1px 6px;
+      white-space: nowrap;
+    }
+
+    /* ------------------------------------------------------------ structure */
+    section {
+      margin-top: 56px;
+    }
+
+    .sec-label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .rule {
+      height: 1px;
+      background: var(--border);
+      border: 0;
+      margin: 56px 0;
+    }
+
+    .kicker {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 14px;
+      margin-bottom: 22px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px 24px;
+    }
+
+    /* ------------------------------------------------------------ callouts */
+    .note,
+    .warn,
+    .danger,
+    .okbox {
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin: 20px 0;
+      max-width: var(--measure);
+    }
+
+    .note {
+      background: #131c26;
+      border: 1px solid #24405a;
+    }
+
+    .warn {
+      background: #241d0f;
+      border: 1px solid #4a3a1a;
+    }
+
+    .danger {
+      background: #241416;
+      border: 1px solid #5a262a;
+    }
+
+    .okbox {
+      background: #10231a;
+      border: 1px solid #245039;
+    }
+
+    .note strong {
+      color: var(--blue);
+    }
+
+    .warn strong {
+      color: var(--warn);
+    }
+
+    .danger strong {
+      color: var(--danger);
+    }
+
+    .okbox strong {
+      color: var(--accent);
+    }
+
+    .note p:last-child,
+    .warn p:last-child,
+    .danger p:last-child,
+    .okbox p:last-child {
+      margin-bottom: 0;
+    }
+
+    /* --------------------------------------------------------------- pills */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      border-radius: 999px;
+      padding: 5px 12px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--muted);
+    }
+
+    .pill.ok {
+      color: var(--accent);
+      border-color: #245039;
+      background: #10231a;
+    }
+
+    .pill.bad {
+      color: var(--danger);
+      border-color: #5a262a;
+      background: #241416;
+    }
+
+    .pill.load {
+      color: var(--warn);
+      border-color: #4a3a1a;
+      background: #241d0f;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      flex: none;
+    }
+
+    /* -------------------------------------------------------------- buttons */
+    .btn {
+      font: 600 14px/1 ui-sans-serif, system-ui, -apple-system, sans-serif;
+      border-radius: 9px;
+      padding: 11px 15px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      cursor: pointer;
+      transition: border-color .15s, color .15s, background .15s;
+    }
+
+    .btn:hover:not(:disabled) {
+      border-color: #3a4152;
+    }
+
+    .btn.primary {
+      background: var(--accent);
+      color: #06231a;
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+
+    .btn.primary:hover:not(:disabled) {
+      background: #4bd99a;
+    }
+
+    .btn.ghost {
+      background: transparent;
+    }
+
+    .btn:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+    }
+
+    .btnrow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin: 16px 0 4px;
+    }
+
+    .numinput {
+      font: inherit;
+      font-size: 15px;
+      width: 90px;
+      color: var(--text);
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      outline: none;
+      transition: border-color .15s;
+    }
+
+    .numinput:focus {
+      border-color: #3a4152;
+    }
+
+    .fieldlabel {
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    /* ---------------------------------------------------------------- stats */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-top: 18px;
+    }
+
+    .stat {
+      background: var(--panel-2);
+      padding: 14px 16px;
+    }
+
+    .stat .k {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+
+    .stat .v {
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .stat .v.mono {
+      font-size: 13.5px;
+      font-weight: 600;
+      word-break: break-all;
+    }
+
+    /* --------------------------------------------------------------- table */
+    .tablewrap {
+      margin-top: 18px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .tablebar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tablebar .rowcount {
+      font-size: 13.5px;
+      color: var(--muted);
+    }
+
+    .tablebar .rowcount b {
+      color: var(--text);
+      font-weight: 650;
+    }
+
+    .scroller {
+      max-height: 520px;
+      overflow: auto;
+    }
+
+    table.data {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    table.data thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--panel-2);
+      color: var(--muted);
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      text-align: left;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    table.data tbody td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    table.data tbody tr:nth-child(even) {
+      background: var(--panel-2);
+    }
+
+    table.data tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    td.num {
+      text-align: right;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+    }
+
+    td.id {
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+    }
+
+    td.sp {
+      font-weight: 600;
+    }
+
+    .empty {
+      padding: 26px 18px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .sex {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      border-radius: 999px;
+      padding: 2px 9px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      background: var(--panel);
+    }
+
+    /* ------------------------------------------------------------ log steps */
+    .log {
+      margin-top: 14px;
+    }
+
+    .log:empty::after {
+      content: "Nothing called yet.";
+      display: block;
+      padding: 10px 0;
+      color: var(--muted);
+      font-size: 13.5px;
+    }
+
+    .lstep {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .lstep:last-child {
+      border-bottom: 0;
+    }
+
+    .mark {
+      flex: none;
+      width: 16px;
+      text-align: center;
+      font-weight: 800;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .mark.ok {
+      color: var(--accent);
+    }
+
+    .mark.fail {
+      color: var(--danger);
+    }
+
+    .mark.info {
+      color: var(--blue);
+    }
+
+    .lbody {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .lop {
+      font-size: 13.5px;
+      font-weight: 650;
+    }
+
+    .ltarget {
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    .ldetail {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12.5px;
+      color: var(--muted);
+      margin-top: 2px;
+      word-break: break-word;
+    }
+
+    .ldetail.ok {
+      color: var(--accent);
+    }
+
+    .ldetail.fail {
+      color: var(--danger);
+    }
+
+    /* ------------------------------------------------------------ sumtable */
+    .sumwrap {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      margin-top: 18px;
+    }
+
+    .sumtable {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .sumtable th {
+      background: var(--panel-2);
+      color: var(--muted);
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      text-align: left;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sumtable td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .sumtable tbody tr:nth-child(even) {
+      background: var(--panel-2);
+    }
+
+    .sumtable tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .sumtable td:first-child {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    .sumtable td strong {
+      color: var(--text);
+    }
+
+    /* ---------------------------------------------------------- code blocks */
+    pre {
+      position: relative;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      margin: 14px 0;
+      overflow-x: auto;
+      max-width: 100%;
+    }
+
+    pre code {
+      color: var(--text);
+      white-space: pre;
+    }
+
+    .tok-key {
+      color: var(--blue);
+    }
+
+    .tok-str {
+      color: var(--accent);
+    }
+
+    .tok-com {
+      color: var(--muted);
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font: 600 11.5px/1 ui-sans-serif, system-ui, sans-serif;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 10px;
+      cursor: pointer;
+      transition: color .15s, border-color .15s;
+    }
+
+    .copy-btn:hover {
+      color: var(--text);
+      border-color: #3a4152;
+    }
+
+    .copy-btn.done {
+      color: var(--accent);
+      border-color: #245039;
+    }
+
+    .step {
+      display: flex;
+      gap: 16px;
+      margin: 30px 0;
+    }
+
+    .step .num {
+      flex: 0 0 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #06231a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+    }
+
+    .step .body {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .step .body p:last-child {
+      margin-bottom: 0;
+    }
+
+    details {
+      margin: 16px 0 0;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 18px;
+      max-width: var(--measure);
+    }
+
+    details summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    details summary:hover {
+      color: var(--text);
+    }
+
+    details pre {
+      margin: 14px 0 0;
+      background: var(--panel-2);
+    }
+
+    .nextnav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 20px;
+    }
+
+    footer {
+      margin-top: 64px;
+      padding-top: 22px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 13.5px;
+    }
+
+    @media (max-width: 640px) {
+      .wrap {
+        padding: 36px 16px 72px;
+      }
+
+      .card {
+        padding: 18px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+
+    <!-- ==================================================== HERO -->
+    <header class="prose">
+      <div class="kicker">Supabase Workshop · Page 4 of 5</div>
+      <h1>Calling a <span class="accent">database function</span> from the browser</h1>
+      <p class="lede">
+        So far we have only ever asked Supabase for <em>tables</em>. This page asks it to run
+        a piece of SQL we wrote ourselves — a function called <code>first_penguins()</code>,
+        living inside the database, returning the first ten penguins.
+      </p>
+    </header>
+
+    <div class="prose">
+      <div class="note">
+        <p>
+          <strong>RPC</strong> stands for <em>Remote Procedure Call</em>: you name a function
+          and pass it some arguments, and the server runs it for you. Supabase exposes every
+          function in your <code>public</code> schema at a URL like
+          <code>/rest/v1/rpc/first_penguins</code>, and <code>supabase-js</code> wraps that up
+          as <code>db.rpc()</code>.
+        </p>
+      </div>
+    </div>
+
+    <!-- ============================================ SETUP STATUS -->
+    <section>
+      <div class="prose">
+        <div class="sec-label">Before we start</div>
+        <h2>Does the function exist yet?</h2>
+      </div>
+
+      <div class="card" style="margin-top:18px;">
+        <span id="setupPill" class="pill load"><span class="dot"></span> Looking for it…</span>
+        <div id="setupText" style="margin-top:14px;color:var(--muted);font-size:14.5px;">
+          Asking Supabase whether <code>first_penguins</code> exists…
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================ THE CALL -->
+    <section>
+      <div class="prose">
+        <div class="sec-label">The call</div>
+        <h2>Ask the database to run it</h2>
+        <p>
+          One line of JavaScript. Change the number if you like — that is the
+          <code>row_limit</code> argument going straight through to the SQL
+          <code>limit</code> clause.
+        </p>
+      </div>
+
+      <div class="card" style="margin-top:18px;">
+        <div class="btnrow" style="margin-top:0;">
+          <span class="fieldlabel">row_limit</span>
+          <input class="numinput" id="rowLimit" type="number" min="1" max="344" value="10" step="1">
+          <button class="btn primary" id="callBtn" type="button" disabled>Call db.rpc()</button>
+        </div>
+        <div class="log" id="callLog"></div>
+      </div>
+
+      <div class="prose">
+        <div class="stats">
+          <div class="stat">
+            <div class="k">Rows returned</div>
+            <div class="v" id="statRows">—</div>
+          </div>
+          <div class="stat">
+            <div class="k">Function</div>
+            <div class="v mono">first_penguins</div>
+          </div>
+          <div class="stat">
+            <div class="k">Round trip</div>
+            <div class="v" id="statTime">—</div>
+          </div>
+          <div class="stat">
+            <div class="k">Called as</div>
+            <div class="v mono" id="statRole">—</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================ THE RESULT -->
+    <section>
+      <div class="prose">
+        <div class="sec-label">The result</div>
+        <h2>What came back</h2>
+        <p>
+          The function returns a <em>set of rows shaped like the table</em>, so this is
+          rendered exactly as page 1 rendered its table read. Notice that you never mentioned
+          <code>order by</code> or <code>limit</code> in the browser — that logic lives in the
+          database now.
+        </p>
+      </div>
+
+      <div class="tablewrap">
+        <div class="tablebar">
+          <span class="pill" id="resultPill">No result yet</span>
+          <span class="rowcount" id="rowcount">—</span>
+        </div>
+        <div class="scroller">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>id</th>
+                <th>species</th>
+                <th>island</th>
+                <th style="text-align:right">bill len</th>
+                <th style="text-align:right">bill dep</th>
+                <th style="text-align:right">flipper</th>
+                <th style="text-align:right">mass (g)</th>
+                <th>sex</th>
+                <th style="text-align:right">year</th>
+              </tr>
+            </thead>
+            <tbody id="tbody">
+              <tr>
+                <td colspan="9" class="empty">Press “Call db.rpc()” above.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="prose">
+        <details>
+          <summary>Show the raw JSON the function returned</summary>
+          <pre><code id="rawJson">Nothing yet — call the function first.</code></pre>
+        </details>
+      </div>
+    </section>
+
+    <hr class="rule">
+
+    <!-- ============================================ THE CODE -->
+    <section>
+      <div class="prose">
+        <div class="sec-label">Both halves</div>
+        <h2>The function in SQL, and the call in JavaScript</h2>
+        <p>Two files, two languages. The first lives in your database; the second in the page.</p>
+      </div>
+
+      <div class="prose">
+        <h3>1 · The function — created once, in the SQL Editor</h3>
+      </div>
+      <pre><code><span class="tok-key">create or replace function</span> public.first_penguins(row_limit <span class="tok-key">integer default</span> 10)
+<span class="tok-key">returns setof</span> public.penguins_rls_on
+<span class="tok-key">language</span> sql
+<span class="tok-key">stable</span>
+<span class="tok-key">security invoker</span>
+<span class="tok-key">as</span> $$
+  <span class="tok-key">select</span> *
+  <span class="tok-key">from</span> public.penguins_rls_on
+  <span class="tok-key">order by</span> id
+  <span class="tok-key">limit</span> row_limit;
+$$;</code></pre>
+
+      <div class="prose">
+        <h3 style="margin-top:26px;">2 · The call — runs in the browser</h3>
+      </div>
+      <pre><code><span class="tok-com">// Supabase wraps the whole HTTP request for us.</span>
+<span class="tok-key">const</span> { <span class="tok-key">data</span>, <span class="tok-key">error</span> } = <span class="tok-key">await</span> db.rpc(<span class="tok-str">'first_penguins'</span>, {
+  row_limit: 10            <span class="tok-com">// becomes the function's argument</span>
+});
+
+<span class="tok-key">if</span> (error) {
+  console.error(<span class="tok-str">'The function call failed:'</span>, error.message);
+} <span class="tok-key">else</span> {
+  console.log(<span class="tok-str">'Got'</span>, data.length, <span class="tok-str">'rows from the function'</span>);
+  console.table(data);
+}</code></pre>
+
+      <div class="prose">
+        <div class="note">
+          <p>
+            <strong>Compare the two styles.</strong> The table read on page 1 was
+            <code>db.from('penguins').select('*')</code> — “give me a table, and I will filter
+            it”. This is <code>db.rpc('first_penguins')</code> — “run this procedure”. Use a
+            function when the logic belongs on the server: several statements, a calculation,
+            a rule you refuse to trust the browser with.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================ READING THE KEYWORDS -->
+    <section>
+      <div class="prose">
+        <div class="sec-label">Reading the definition</div>
+        <h2>Five words worth understanding</h2>
+      </div>
+
+      <div class="step">
+        <div class="num">1</div>
+        <div class="body">
+          <h3><code>returns setof public.penguins_rls_on</code></h3>
+          <p>
+            The result is a set of rows shaped exactly like that table. Using the table name
+            as the return type means the columns can never drift: add a column to
+            <code>penguins_rls_on</code> later and the function returns it automatically.
+          </p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="num">2</div>
+        <div class="body">
+          <h3><code>language sql</code></h3>
+          <p>
+            Plain SQL instead of PL/pgSQL. Postgres can often fold a simple SQL function
+            straight into the calling query, which makes it the fastest option. You only need
+            PL/pgSQL when you want variables, loops or <code>IF</code> statements.
+          </p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="num">3</div>
+        <div class="body">
+          <h3><code>stable</code></h3>
+          <p>
+            “This function reads but never writes.” It lets the planner call it once and reuse
+            the answer. The full set is <code>immutable</code> (same inputs, same answer
+            always), <code>stable</code> (reads data, does not write — ours) and
+            <code>volatile</code> (may write, or may differ each call). Marking a writing
+            function <code>stable</code> is a lie that produces baffling bugs, so this line is
+            not decoration.
+          </p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="num">4</div>
+        <div class="body">
+          <h3><code>security invoker</code></h3>
+          <p>
+            <strong>The one that matters for this workshop.</strong> The function runs with the
+            permissions of whoever <em>called</em> it, so Row Level Security still applies
+            inside it. A student who calls this function sees only the rows their own policies
+            allow.
+          </p>
+          <p style="margin-top:10px;">
+            The alternative, <code>security definer</code>, runs the function as its
+            <em>owner</em> — usually the postgres superuser — and therefore
+            <strong>bypasses RLS completely</strong>. That is a door around every policy you
+            wrote. It is occasionally the right tool, and it always deserves a second look.
+            (A view behaves like <em>definer</em> by default, which surprises people; you have
+            to ask for <code>with (security_invoker = true)</code> to make a view respect the
+            reader's policies.)
+          </p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="num">5</div>
+        <div class="body">
+          <h3><code>grant execute</code> — the third gate</h3>
+          <p>
+            You have now met three separate gates in this workshop:
+            <strong>grants</strong> (may this role touch the object?),
+            <strong>policies</strong> (which rows?), and now
+            <strong>execute</strong> (may this role run this function?). Postgres grants
+            EXECUTE on new functions to <code>PUBLIC</code> by default, so things usually just
+            work — which is exactly why forgetting it is so confusing when it does not. If one
+            role gets a 404 and another works, look here.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================ WHY ============================================ -->
+    <section>
+      <div class="prose">
+        <div class="sec-label">Why bother?</div>
+        <h2>When a function beats a table read</h2>
+      </div>
+
+      <div class="sumwrap">
+        <table class="sumtable">
+          <thead>
+            <tr>
+              <th>Use a table read when…</th>
+              <th>Use a function when…</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>db.from('t').select()</td>
+              <td>db.rpc('fn')</td>
+            </tr>
+            <tr>
+              <td>You want rows, and the browser is allowed to choose the filtering, sorting and paging.</td>
+              <td>You want the <strong>database</strong> to decide. The browser asks a question, not for a table.</td>
+            </tr>
+            <tr>
+              <td>Simple reads, and RLS already expresses who may see what.</td>
+              <td><strong>Several statements</strong>, joins, aggregates or a calculation that would be silly to
+                reimplement in JavaScript.</td>
+            </tr>
+            <tr>
+              <td>Anything a student could safely be allowed to write themselves.</td>
+              <td>Logic you do not want to trust the client with — a total, an eligibility check, a rule.</td>
+            </tr>
+            <tr>
+              <td>—</td>
+              <td>A <strong>writable</strong> operation that must always do a second thing, like insert a row and stamp
+                an audit record.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="prose">
+        <div class="warn">
+          <p>
+            <strong>A function is not automatically a security boundary.</strong> Everything
+            from pages 1–3 still applies. Because this one is
+            <code>security invoker</code>, RLS decides which rows it can see — if
+            <code>penguins_rls_on</code> had no select policy, this function would faithfully
+            return <strong>zero rows</strong> and report success. Wrap your logic in a function
+            and you have organised it, not protected it.
+          </p>
+        </div>
+
+        <div class="note">
+          <p>
+            <strong>Two things that catch people out.</strong> First, PostgREST keeps a cache
+            of what exists, so a brand-new function occasionally 404s until you run
+            <code>notify pgrst, 'reload schema';</code>. Second, you can pass arguments the
+            function does not have, or omit ones it requires, and PostgREST reports
+            <code>PGRST202</code> — “could not find the function with that signature”. The
+            error is about the <em>arguments</em>, not about the function being missing.
+          </p>
+        </div>
+
+        <div class="okbox">
+          <p>
+            <strong>Your parameter has a default.</strong> Because the definition says
+            <code>default 10</code>, you can also call it with no arguments at all and get ten
+            rows. Try it in the console:
+            <code>await db.rpc('first_penguins')</code>.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================ CONSOLE -->
+    <section>
+      <div class="prose">
+        <div class="sec-label">Try it yourself</div>
+        <h2>Console exercises</h2>
+      </div>
+
+      <pre><code><span class="tok-com">// The call this page makes</span>
+<span class="tok-key">await</span> db.rpc(<span class="tok-str">'first_penguins'</span>, { row_limit: 10 })
+
+<span class="tok-com">// Just three rows</span>
+<span class="tok-key">await</span> db.rpc(<span class="tok-str">'first_penguins'</span>, { row_limit: 3 })
+
+<span class="tok-com">// Omit the argument entirely - the `default 10` kicks in</span>
+<span class="tok-key">await</span> db.rpc(<span class="tok-str">'first_penguins'</span>)
+
+<span class="tok-com">// A deliberately wrong argument name: read the error carefully</span>
+<span class="tok-key">await</span> db.rpc(<span class="tok-str">'first_penguins'</span>, { limit: 3 })
+<span class="tok-com">// -> PGRST202. The function exists; the SIGNATURE does not match.</span>
+
+<span class="tok-com">// A function that does not exist</span>
+<span class="tok-key">await</span> db.rpc(<span class="tok-str">'no_such_function'</span>)
+
+<span class="tok-com">// Same data, the table way, for comparison</span>
+<span class="tok-key">await</span> db.from(<span class="tok-str">'penguins_rls_on'</span>).select(<span class="tok-str">'*'</span>).order(<span class="tok-str">'id'</span>).limit(10)</code></pre>
+    </section>
+
+    <!-- ============================================ NEXT -->
+    <section>
+      <div class="prose">
+        <div class="sec-label">Next</div>
+        <h2>Where we go from here</h2>
+        <p>
+          You now have all three ways of getting data out of Supabase: a plain table read, a
+          policy-guarded table with a logged-in user, and a function you wrote yourself.
+        </p>
+        <p>
+          Page 5 goes back to the very beginning and takes apart the two lines every one of
+          these pages started with — the library from the CDN, and what
+          <code>createClient()</code> is really doing.
+        </p>
+        <p>
+          Still outstanding for another day: the <code>insert</code> and
+          <code>delete</code> policies, and replacing <code>with check (true)</code> with a
+          rule that says <em>who</em> a row belongs to.
+        </p>
+
+        <div class="nextnav">
+          <a class="pill" href="page-3-login.html">← Page 3 · Logging in (JWT)</a>
+          <a class="pill" href="basicConnect.html">Page 5 · The library &amp; createClient() →</a>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <p style="margin:0;">
+        Supabase workshop · page 4 of 5 · project
+        <span class="mono" style="color:var(--muted)">decwucuwqnzrxzbxxifu</span>
+      </p>
+    </footer>
+
+  </div>
+
+  <!-- ========================================================================== -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
+  <script src="supabase-config.js"></script>
+
+  <script>
+    (async function () {
+      'use strict';
+
+      const FN = 'first_penguins';
+
+      const $ = function (id) { return document.getElementById(id); };
+
+      const COLS = [
+        { key: 'id', label: 'id' },
+        { key: 'species', label: 'species' },
+        { key: 'island', label: 'island' },
+        { key: 'bill_length_mm', label: 'bill len', num: true },
+        { key: 'bill_depth_mm', label: 'bill dep', num: true },
+        { key: 'flipper_length_mm', label: 'flipper', num: true },
+        { key: 'body_mass_g', label: 'mass (g)', num: true },
+        { key: 'sex', label: 'sex' },
+        { key: 'year', label: 'year', num: true }
+      ];
+
+      /* --------------------------------------------------------------- log */
+      function addStep(kind, op, target, detail) {
+        const marks = { ok: '✓', fail: '✕', info: '•', blocked: '⛔' };
+        const logEl = $('callLog');
+
+        const row = document.createElement('div');
+        row.className = 'lstep';
+
+        const mark = document.createElement('div');
+        mark.className = 'mark ' + kind;
+        mark.textContent = marks[kind] || '•';
+
+        const body = document.createElement('div');
+        body.className = 'lbody';
+
+        const opEl = document.createElement('div');
+        opEl.className = 'lop';
+        opEl.textContent = op;
+        if (target) {
+          const t = document.createElement('span');
+          t.className = 'ltarget';
+          t.textContent = ' · ' + target;
+          opEl.appendChild(t);
+        }
+
+        const det = document.createElement('div');
+        det.className = 'ldetail ' + kind;
+        det.textContent = detail;
+
+        body.appendChild(opEl);
+        body.appendChild(det);
+        row.appendChild(mark);
+        row.appendChild(body);
+        logEl.appendChild(row);
+      }
+
+      /* ------------------------------------------------------------ render */
+      function renderRows(rows) {
+        const tbody = $('tbody');
+        tbody.textContent = '';
+
+        if (!rows || rows.length === 0) {
+          const tr = document.createElement('tr');
+          const td = document.createElement('td');
+          td.colSpan = COLS.length;
+          td.className = 'empty';
+          td.textContent = 'The function ran successfully but returned no rows.';
+          tr.appendChild(td);
+          tbody.appendChild(tr);
+          return;
+        }
+
+        const frag = document.createDocumentFragment();
+
+        for (const r of rows) {
+          const tr = document.createElement('tr');
+
+          for (const c of COLS) {
+            const td = document.createElement('td');
+            if (c.num) td.className = 'num';
+            if (c.key === 'id') td.className = 'id';
+            if (c.key === 'species') td.className = 'sp';
+
+            const v = r[c.key];
+            if (v === null || v === undefined) {
+              td.textContent = '—';
+            } else if (c.key === 'sex') {
+              const span = document.createElement('span');
+              span.className = 'sex';
+              span.textContent = v;
+              td.appendChild(span);
+            } else {
+              td.textContent = v;   /* textContent, never innerHTML */
+            }
+            tr.appendChild(td);
+          }
+          frag.appendChild(tr);
+        }
+
+        tbody.appendChild(frag);
+      }
+
+      /* ======================================================================
+         1. Does the function exist? Call it with the smallest possible argument.
+         ====================================================================== */
+      async function probeFunction() {
+        const { data, error } = await db.rpc(FN, { row_limit: 1 });
+        return { ok: !error, error: error, data: data };
+      }
+
+      const probe = await probeFunction();
+      const pill = $('setupPill');
+      const text = $('setupText');
+
+      if (probe.ok) {
+        pill.className = 'pill ok';
+        pill.innerHTML = '<span class="dot"></span> Function found';
+        text.innerHTML =
+          '<b>' + FN + '()</b> exists and responded. Press “Call db.rpc()” below to fetch ' +
+          'the first ten penguins.';
+        $('callBtn').disabled = false;
+      } else {
+        pill.className = 'pill bad';
+        pill.innerHTML = '<span class="dot"></span> Not set up';
+
+        const code = probe.error && probe.error.code ? probe.error.code : '';
+        text.innerHTML =
+          '<b>Could not call ' + FN + '().</b> ' +
+          (code ? 'The API said <code>' + code + '</code>. ' : '') +
+          'Run <b>setup-function.sql</b> in the Supabase SQL Editor, then reload this page.';
+
+        /* Explain the two very different "not found" errors, as DOM nodes. */
+        const box = document.createElement('div');
+        box.className = 'warn';
+
+        const p1 = document.createElement('p');
+        const s1 = document.createElement('strong');
+        s1.textContent = 'Two different errors mean two different things: ';
+        p1.appendChild(s1);
+        p1.appendChild(document.createTextNode(
+          'PGRST202 means the function is missing OR the arguments do not match — the API ' +
+          'found no function with that signature. A plain 404 means it is not exposed at all. ' +
+          'If you have only just created it, the API cache may be stale:'
+        ));
+
+        const pre = document.createElement('pre');
+        pre.style.margin = '12px 0 0';
+        const c = document.createElement('code');
+        c.textContent = "notify pgrst, 'reload schema';";
+        pre.appendChild(c);
+
+        box.appendChild(p1);
+        box.appendChild(pre);
+
+        if (probe.error && probe.error.message) {
+          const p2 = document.createElement('p');
+          p2.className = 'mono';
+          p2.style.marginTop = '12px';
+          p2.style.color = 'var(--danger)';
+          p2.textContent = probe.error.message;
+          box.appendChild(p2);
+        }
+
+        text.parentNode.insertBefore(box, text.nextSibling);
+      }
+
+      /* ======================================================================
+         2. The actual call
+         ====================================================================== */
+      $('callBtn').addEventListener('click', async function () {
+        const btn = this;
+        btn.disabled = true;
+
+        let limit = parseInt($('rowLimit').value, 10);
+        if (!Number.isFinite(limit) || limit < 1) limit = 10;
+
+        try {
+          /* Who are we right now? The function is security invoker, so this matters. */
+          const { data: sessionData } = await db.auth.getSession();
+          const role = sessionData.session ? 'authenticated' : 'anon';
+
+          addStep('info', 'CALL', 'db.rpc(' + limit + ')',
+            'sending { row_limit: ' + limit + ' } as role: ' + role);
+
+          const started = performance.now();
+          const { data, error } = await db.rpc(FN, { row_limit: limit });
+          const elapsed = Math.round(performance.now() - started);
+
+          if (error) {
+            addStep('fail', 'ERROR', error.code || '',
+              error.message + (error.hint ? '  |  hint: ' + error.hint : ''));
+            renderRows([]);
+            $('resultPill').className = 'pill bad';
+            $('resultPill').textContent = 'Failed';
+            $('rowcount').textContent = '—';
+            $('statRows').textContent = '—';
+            $('statTime').textContent = elapsed + ' ms';
+            $('statRole').textContent = role;
+            return;
+          }
+
+          const rows = data || [];
+
+          addStep('ok', 'RESPONSE', 'HTTP 200',
+            'the function returned ' + rows.length + ' row(s) in ' + elapsed + ' ms');
+
+          renderRows(rows);
+
+          $('resultPill').className = 'pill ok';
+          $('resultPill').textContent = 'Success';
+          $('rowcount').innerHTML = 'Showing <b>' + rows.length + '</b> row(s)';
+          $('statRows').textContent = rows.length;
+          $('statTime').textContent = elapsed + ' ms';
+          $('statRole').textContent = role;
+
+          $('rawJson').textContent = JSON.stringify(rows, null, 2);
+
+          console.log('[page 4] rpc(' + FN + ', ' + limit + ') ->', rows);
+
+        } catch (e) {
+          addStep('fail', 'ABORTED', '', e.message || String(e));
+        } finally {
+          btn.disabled = false;
+        }
+      });
+
+      /* ------------------------------------------------- copy code buttons */
+      document.querySelectorAll('pre').forEach(function (pre) {
+        const btn = document.createElement('button');
+        btn.className = 'copy-btn';
+        btn.type = 'button';
+        btn.textContent = 'Copy';
+
+        btn.addEventListener('click', function () {
+          const code = pre.querySelector('code');
+          const text = code ? code.innerText : pre.innerText;
+          const done = function () {
+            btn.textContent = 'Copied';
+            btn.classList.add('done');
+            setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1500);
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done, function () { fallback(text, done); });
+          } else {
+            fallback(text, done);
+          }
+        });
+
+        pre.appendChild(btn);
+      });
+
+      function fallback(text, done) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); done(); } catch (e) { }
+        document.body.removeChild(ta);
+      }
+
+      console.log('[page 4] function page ready');
+    })();
+  </script>
+</body>
+
+</html>
